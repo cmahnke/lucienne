@@ -1,6 +1,9 @@
 # Lucienne - A IIIF pattern generator
 
-This is a web component to build patterns from IIIF manififests - like from wall papers. It's also possible to pass a collection like [the default one](https://vorsatzpapier.projektemacher.org/collection.json) to load a sample from it. For more background see this [blog Article](https://christianmahnke.de/en/post/wallpaper-generator/)-
+This is a web component to build patterns from IIIF manififests - like from wall papers. It's also possible to pass a collection like [the default one](https://vorsatzpapier.projektemacher.org/collection.json) to load a sample from it. For more background see this [blog article](https://christianmahnke.de/en/post/wallpaper-generator/)-
+
+# Demo
+A demo is available at [https://cmahnke.github.io/lucienne/](https://cmahnke.github.io/lucienne/).
 
 # Name
 

@@ -2,11 +2,11 @@
   "name": "@projektemacher/lucienne",
   "version": "0.1.2",
   "type": "module",
-  "description": "A IIIF pattern genrator",
+  "description": "A IIIF pattern generator",
   "engines": {
     "node": ">=20.0.0"
   },
-  "license": "BSD-3-Clause",
+  "license": "BSD-3-Clause-Attribution",
   "exports": {
     "types": "./dist/index.d.ts",
     "import": "./dist/lucienne.js"

@@ -1,0 +1,19 @@
+cff-version: 1.2.0
+title: Lucienne
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - given-names: Chrisitian
+    family-names: Mahnke
+    orcid: 'https://orcid.org/0009-0003-1361-4159'
+    affiliation: Universität Göttingen
+    email: mahnke@kustodie.uni-goettingen.de
+repository-code: 'https://gitlab.gwdg.de/forumwissengoe/quantenkosmos'
+abstract: A IIIF pattern generator based on OpenSeadragon
+keywords:
+  - IIIF
+  - Wallpaper
+  - Pattern
+license: BSD-3-Clause-Attribution
