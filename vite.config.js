@@ -17,7 +17,7 @@ const artifactversion = packageJson.version;
 // https://vitejs.dev/config/
 export default defineConfig({
   base: "./",
-  assetsInclude: ['assets/images/*.svg','assets/fonts/*'],
+  assetsInclude: ["assets/images/*.svg", "assets/fonts/*"],
   plugins: [
     {
       apply: "build"
