@@ -34,20 +34,19 @@ See next sections for options.
 
 ## Parameters
 
-| Parameter | Type | Default | Description |
-|---------|------|---------|-------------|
-| `element` | `HTMLDivElement` | — | The container element where the CuttingTable interface will be rendered. |
-| `urlInput` | `boolean` | `true` | Whether to display a URL input field for specifying image sources. |
-| `gridSelector` | `boolean` | `true` | Whether to enable grid selection controls for layout configuration. |
-| `download` | `boolean` | `true` | Whether to enable download functionality for exported JSON data. |
-| `autoLoad` | `boolean` | `true` | Whether to automatically load the first configured URL upon initialization. |
-| `urls` | `URL \| Array<{url: string, label: string}> \| string \| undefined` | `undefined` | Optional initial URLs to load. Can be a single URL, an array of URL objects with labels, or a string URL. |
-| `shifts` | `boolean` | `false` | Whether to enable shift controls for offset adjustments. |
+| Parameter      | Type                                                                | Default     | Description                                                                                               |
+| -------------- | ------------------------------------------------------------------- | ----------- | --------------------------------------------------------------------------------------------------------- |
+| `element`      | `HTMLDivElement`                                                    | —           | The container element where the CuttingTable interface will be rendered.                                  |
+| `urlInput`     | `boolean`                                                           | `true`      | Whether to display a URL input field for specifying image sources.                                        |
+| `gridSelector` | `boolean`                                                           | `true`      | Whether to enable grid selection controls for layout configuration.                                       |
+| `download`     | `boolean`                                                           | `true`      | Whether to enable download functionality for exported JSON data.                                          |
+| `autoLoad`     | `boolean`                                                           | `true`      | Whether to automatically load the first configured URL upon initialization.                               |
+| `urls`         | `URL \| Array<{url: string, label: string}> \| string \| undefined` | `undefined` | Optional initial URLs to load. Can be a single URL, an array of URL objects with labels, or a string URL. |
+| `shifts`       | `boolean`                                                           | `false`     | Whether to enable shift controls for offset adjustments.                                                  |
 
 ## Throws
 
-* `Error` if no valid element is provided or if no initial URL is set when `urlInput` is `false`.
-
+- `Error` if no valid element is provided or if no initial URL is set when `urlInput` is `false`.
 
 # Development
 
@@ -77,7 +76,6 @@ serve public/jsdoc
 ```
 
 Open [http://localhost:3000](http://localhost:3000)
-
 
 ## Packaging
 

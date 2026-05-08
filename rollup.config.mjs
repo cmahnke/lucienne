@@ -17,7 +17,7 @@ import replace from "@rollup/plugin-replace";
 import typescriptOptions from "./tsconfig.json" with { type: "json" };
 import packageJson from "./package.json" with { type: "json" };
 
-const artifactName = packageJson.name.split('/').pop();
+const artifactName = packageJson.name.split("/").pop();
 const artifactversion = packageJson.version;
 
 const fontPath = "src/assets/fonts";
