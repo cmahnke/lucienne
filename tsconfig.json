@@ -1,0 +1,30 @@
+{
+  "compilerOptions": {
+    "ignoreDeprecations": "6.0",
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "removeComments": true,
+    "allowUnreachableCode": false,
+    "noImplicitReturns": true,
+    "preserveConstEnums": true,
+    "noImplicitThis": true,
+    "strictBindCallApply": true,
+    "sourceMap": true,
+    "moduleResolution": "bundler",
+    "noEmit": true,
+    "esModuleInterop": false,
+    "resolveJsonModule": true,
+    "strict": false,
+    "target": "es2022",
+    "skipLibCheck": true,
+    "lib": ["dom", "es2022"],
+    "typeRoots": ["./node_modules/@types", "./src/@types", "./node_modules/openseadragon-fabric-overlay/dist/types/"],
+    "baseUrl": ".",
+    "paths": {
+      "openseadragon": ["./src/@types/openseadragon/index.d.ts"],
+      "openseadragon-fabric-overlay": ["node_modules/openseadragon-fabric-overlay/dist/types/fabric-overlay.d.ts"]
+    }
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "**/*.spec.ts"]
+}

@@ -1,0 +1,47 @@
+.lucienne,
+.lucienne dual-range-slider,
+.lucienne rotating-input,
+.lucienne grid-size-selector,
+.lucienne offscreencanvas-download,
+.lucienne image-resolution-select {
+  --btn-bg-color: #66afff;
+  --btn-text-color: white;
+  --btn-hover-bg-color: #007bff;
+  --btn-hover-tansition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+  --btn-disabled-bg-color: #ccc;
+  --btn-disabled-text-color: #666;
+  --btn-padding: 8px 16px;
+  --btn-border-radius: 0.4rem;
+  --btn-border: none;
+  --btn-font-size: 1em;
+  --btn-line-height: 1.2;
+  --btn-cursor: pointer;
+  --btn-disabled-cursor: not-allowed;
+  --btn-margin: 0 2em;
+  --disabled-opacity: 0.6;
+  --font-family: sans-serif;
+  --control-handle-color: #007bff;
+  --control-fill-color: #007bff;
+  --control-thumb-color: #007bff;
+  --control-track-color: #ddd;
+  --control-disabled-color: #ccc;
+  --control-thumb-hover-color: #0056b3;
+  --control-thumb-active-color: #004085;
+  --control-circle-color: var(--control-track-color);
+  --input-border: 1px solid #ccc;
+  --rotating-input-container-margin: 20px auto;
+  --link-color: #66afff;
+  --link-color-hover: #007bff;
+  --grid-width: 15em;
+  --grid-height: 15em;
+  --cell-background-color: #ddd;
+  --cell-selected-background-color: #66afff;
+  --cell-selected-border: 1px solid color-mix(in srgb, var(--cell-selected-background-color) 70%, black);
+  --grid-box-shadow: 0 4px 8px rgb(0 0 0 / 20%);
+}
+
+.lucienne {
+  @media (width >= 720px) {
+    margin: 2rem;
+  }
+}

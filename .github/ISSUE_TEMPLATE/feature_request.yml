@@ -1,0 +1,56 @@
+name: 🚀 Feature Request
+description: Share an idea or improvement for Lucienne
+title: "[Feature]: "
+labels: ["enhancement"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Got an idea? We'd love to hear it! 💡 No idea is too big or too small.
+
+  - type: textarea
+    id: idea
+    attributes:
+      label: 💡 Your Idea
+      description: What would you like to see? Feel free to be as creative as you want.
+      placeholder: "What if Lucienne could..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: motivation
+    attributes:
+      label: 🎯 Motivation
+      description: What inspired this idea? What would it unlock for you?
+      placeholder: "This would help me... / It would be cool to..."
+    validations:
+      required: false
+
+  - type: textarea
+    id: example
+    attributes:
+      label: 📝 Example Use Case
+      description: Show how this might look in practice.
+      placeholder: Provide examples, as mock if possible
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: 📎 Additional Context
+      description: Anything else — screenshots, references, links, rough sketches?
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: ✅ Checklist
+      options:
+        - label: I have checked existing issues and this hasn't been suggested yet
+          required: true
+        - label: This could be useful to other users too
+          required: false

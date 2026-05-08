@@ -1,0 +1,49 @@
+# See https://docs.github.com/en/actions/publishing-packages/publishing-nodejs-packages
+name: Publish package to Package registries
+on:
+  release:
+    types: [published]
+jobs:
+  publish_gpr:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v6
+      # Setup .npmrc file to publish to GitHub Packages
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: ".nvmrc"
+          registry-url: "https://npm.pkg.github.com"
+          scope: "@cmahnke"
+          always-auth: true
+      - run: cat $NPM_CONFIG_USERCONFIG
+      - run: sed -i '2,2s/@projektemacher\/lucienne/@cmahnke\/lucienne/g' package.json
+      - run: npm i
+      - run: npm run build
+      - run: |
+          echo registry=https://npm.pkg.github.com/ > .npmrc
+          echo always-auth=true >> .npmrc
+          echo '//npm.pkg.github.com/cmahnke:_authToken=${{ secrets.GITHUB_TOKEN }} @cmahnke:registry=https://npm.pkg.github.com/cmahnke' >> .npmrc
+      - run: npm publish --verbose
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  publish_npm:
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: ".nvmrc"
+          registry-url: "https://registry.npmjs.org"
+      - run: npm i
+      - run: npm run build
+      - run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

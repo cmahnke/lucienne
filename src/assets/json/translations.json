@@ -1,0 +1,80 @@
+{
+  "en": {
+    "cuttingTable": {
+      "linksJson": "Download as JSON",
+      "uploadError": "JSON could not be loaded",
+      "loadUrl": "Load URL",
+      "rulerToggle": "Show rulers"
+    },
+    "iiifForm": {
+      "collectionChoose": "Select manifest from the collection",
+      "collectionButton": "Select",
+      "manifestChoose": "Select page as template",
+      "manifestButton": "Select",
+      "imageChoose": "Select image",
+      "imageButton": "Select",
+      "loadButton": "Load URL",
+      "errorJson": "<b>IIIF file could not be loaded</b>",
+      "errorURL": "<b>Invalid URL</b>"
+    },
+    "renderer": {
+      "error": "Error",
+      "renderTimeout": "Render not finished after"
+    },
+    "canvasDownloadButton": {
+      "download": "Download",
+      "downloadFailed": "Download failed."
+    },
+    "imageResolutionSelect": {
+      "custom": "Custom resolution",
+      "confirmButton": "Confirm"
+    },
+    "gridSizeSelector": {
+      "selectSize": "Select Size",
+      "updateSize": "Update Size"
+    },
+    "generic": {
+      "columns": "Columns",
+      "rows": "Rows"
+    }
+  },
+  "de": {
+    "cuttingTable": {
+      "linksJson": "Als JSON herunterladen",
+      "uploadError": "JSON konnte nicht geladen werden",
+      "loadUrl": "URL laden",
+      "rulerToggle": "Lineale anzeigen"
+    },
+    "iiifForm": {
+      "collectionChoose": "Manifest aus der Sammlung auswählen",
+      "collectionButton": "Auswählen",
+      "manifestChoose": "Seite als Vorlage auswählen",
+      "manifestButton": "Auswählen",
+      "imageChoose": "Bild auswählen",
+      "imageButton": "Auswählen",
+      "loadButton": "URL laden",
+      "errorJson": "<b>IIIF Datei konnte nicht geladen werden</b>",
+      "errorURL": "<b>Ungültige URL</b>"
+    },
+    "renderer": {
+      "error": "Fehler",
+      "renderTimeout": "Erzeugung nicht abgeschlossen nach"
+    },
+    "canvasDownloadButton": {
+      "download": "Herunterladen",
+      "downloadFailed": "Download fehlgeschlagen."
+    },
+    "imageResolutionSelect": {
+      "custom": "Eigene Auflösung",
+      "confirmButton": "Bestätigen"
+    },
+    "gridSizeSelector": {
+      "selectSize": "Größe wählen",
+      "updateSize": "Größe aktualisieren"
+    },
+    "generic": {
+      "columns": "Spalten",
+      "rows": "Zeilen"
+    }
+  }
+}

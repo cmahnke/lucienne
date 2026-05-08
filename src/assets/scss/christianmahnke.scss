@@ -1,0 +1,88 @@
+@use "sass:color";
+
+@use "pkg:@fontsource-utils/scss" as fontsource;
+@use "pkg:@fontsource-variable/league-spartan/scss" as leagueSpartanVariabale;
+
+@include fontsource.faces($metadata: leagueSpartanVariabale.$metadata, $weights: 400, $subsets: latin);
+
+$inactive-color: rgb(170 170 170);
+$active-color: rgb(77 77 77);
+$control-color: #ff073a;
+$font: "League Spartan Variable";
+
+.lucienne,
+.lucienne dual-range-slider,
+.lucienne rotating-input,
+.lucienne grid-size-selector,
+.lucienne offscreencanvas-download,
+.lucienne image-resolution-select {
+  --btn-bg-color: #d3d3d3;
+  --btn-text-color: #{$active-color};
+  --btn-hover-bg-color: color-mix(in srgb, #d3d3d3 85%, black);
+  --btn-hover-tansition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+  --btn-disabled-bg-color: color-mix(in srgb, #d3d3d3 55%, white);
+  --btn-disabled-text-color: #666;
+  --btn-padding: 8px 16px;
+  --btn-border-radius: 0;
+  --btn-border: 1px solid #000;
+  --btn-font-size: 1rem;
+  --btn-line-height: unset;
+  --btn-cursor: pointer;
+  --btn-disabled-cursor: not-allowed;
+  --btn-margin: 0 2em;
+  --disabled-opacity: 0.6;
+  --font-family: #{$font};
+  --control-handle-color: #{$control-color};
+  --control-fill-color: #f1ffb7;
+  --control-thumb-color: #{$control-color};
+  --control-track-color: #701611;
+  --control-disabled-color: #ddd;
+  --control-thumb-hover-color: var(--control-thumb-color);
+  --control-thumb-active-color: var(--control-thumb-color);
+  --control-circle-color: var(--control-track-color);
+  --input-border: 1px solid #ccc;
+  --rotating-input-container-margin: 20px auto;
+  --link-color: #d1cac8;
+  --link-color-hover: #d1cac8;
+  --grid-width: 15em;
+  --grid-height: 15em;
+  --cell-background-color: #ddd;
+  --cell-selected-background-color: #66afff;
+  --cell-selected-border: 1px solid color-mix(in srgb, var(--cell-selected-background-color) 70%, black);
+  --grid-box-shadow: 0 4px 8px rgb(0 0 0 / 20%);
+}
+
+body {
+  color: rgb(77 77 77);
+  font-family: $font;
+
+  .lucienne {
+    *:focus-visible {
+      outline-offset: 1px;
+      outline-style: solid;
+    }
+
+    .output-area,
+    .input-area {
+      background-color: rgb(255 255 255);
+      border-radius: unset;
+    }
+
+    .input-area {
+      border-top-left-radius: 1rem;
+      border-top-right-radius: 1rem;
+    }
+
+    .output-area {
+      border-bottom-right-radius: 1rem;
+      border-bottom-left-radius: 1rem;
+    }
+
+    .cutting-table-viewer,
+    .output-viewer {
+      .controls.button {
+        filter: drop-shadow(0 0 2px black) drop-shadow(0 0 2px black);
+      }
+    }
+  }
+}

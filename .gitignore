@@ -1,0 +1,9 @@
+dist/**
+build/**
+node_modules/
+patterns/assets/fonts
+patterns/assets/static
+src/assets/fonts/
+public/**
+.stylelintcache
+.DS_Store

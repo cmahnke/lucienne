@@ -1,0 +1,29 @@
+blank_issues_enabled: true
+
+issue_templates:
+  - name: Bug report
+    description: Bugs and unexpected behavior
+    labels: [Bug]
+    file: bug_report.yml
+
+  - name: Feature request
+    description: "Possible improvements"
+    labels: [Feature]
+    file: feature_request.yml
+
+contact_links:
+  - name: Documentation
+    url: https://github.com/cmahnke/lucienne#readme
+    about: Please read the documentation before opening an issue.
+
+  - name: Discussions
+    url: https://github.com/cmahnke/lucienne/discussions
+    about: Have a general question or idea? Start a discussion instead.
+
+  - name: OpenSeadragon
+    url: https://openseadragon.github.io/
+    about: Openseadragon documentation and links.
+
+  - name: Node.js Compatibility
+    url: https://nodejs.org/en/about/releases
+    about: Check if your Node.js version is still actively supported.
