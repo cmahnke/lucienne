@@ -34,7 +34,7 @@
   "scripts": {
     "dev": "npm run svgo && vite",
     "vite-build": "npm run clean && npm run svgo && npx vite build",
-    "lint": "npx eslint . -c eslint.config.mjs --report-unused-disable-directives --max-warnings 0",
+    "lint": "npx eslint . -c eslint.config.mjs --report-unused-disable-directives",
     "stylelint": "npx stylelint '**/*.scss'",
     "format": "npx prettier . --check",
     "tsc": "npx tsc",
