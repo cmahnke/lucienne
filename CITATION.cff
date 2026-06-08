@@ -8,8 +8,10 @@ authors:
   - given-names: Chrisitian
     family-names: Mahnke
     orcid: 'https://orcid.org/0009-0003-1361-4159'
-    affiliation: Universität Göttingen
     email: mahnke@kustodie.uni-goettingen.de
+identifiers:
+  - type: doi
+    value: 10.5281/zenodo.20082639
 repository-code: 'https://gitlab.gwdg.de/forumwissengoe/quantenkosmos'
 abstract: A IIIF pattern generator based on OpenSeadragon
 keywords:

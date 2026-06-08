@@ -1,6 +1,6 @@
 {
   "name": "@projektemacher/lucienne",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "type": "module",
   "description": "A IIIF pattern generator",
   "engines": {
