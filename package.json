@@ -16,7 +16,8 @@
     "src",
     "images",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "CITATION.cff"
   ],
   "keywords": [
     "OpenSeadragon",
