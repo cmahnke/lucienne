@@ -83,7 +83,7 @@ jobs:
           registry-url: "https://npm.pkg.github.com"
       - name: Install dependencies
         run: |
-          npm i
+          npm ci
       - name: build site
         run: |
           npm run site
