@@ -72,7 +72,7 @@
     "@types/node": "^26.2.0",
     "better-docs": "^2.7.3",
     "browserslist-to-esbuild": "^2.1.1",
-    "eslint": "^10.8.1",
+    "eslint": "^10.9.0",
     "globals": "^17.11.0",
     "jsdoc": "^4.0.5",
     "knip": "^6.32.2",
