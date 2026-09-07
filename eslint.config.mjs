@@ -26,6 +26,8 @@ export default [
       "rollup.config.mjs",
       "vite.config.js",
       "postcss.config.js",
+      "playwright.config.ts",
+      "e2e/",
       "src/@types/openseadragon/index.d.ts"
     ]
   }

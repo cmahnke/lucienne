@@ -8,7 +8,12 @@ const urlParams = new URLSearchParams(window.location.search);
 if (urlParams.has("url")) {
   const u = urlParams.get("url");
   if (u !== null) {
-    urls = new URL(u);
+    try {
+      urls = new URL(u);
+    } catch (error) {
+      // Keep the default collection instead of failing with an uncaught URIError
+      console.error(`Invalid "url" query parameter ignored: ${u}`, error);
+    }
   }
 }
 

@@ -1,0 +1,78 @@
+{
+  "@context": "http://iiif.io/api/presentation/3/context.json",
+  "id": "https://iiif.test/manifest-one.json",
+  "type": "Manifest",
+  "label": { "en": ["Test Manifest"] },
+  "items": [
+    {
+      "id": "https://iiif.test/canvas/1",
+      "type": "Canvas",
+      "label": { "en": ["Canvas One"] },
+      "width": 512,
+      "height": 512,
+      "items": [
+        {
+          "id": "https://iiif.test/canvas/1/annotation-page",
+          "type": "AnnotationPage",
+          "items": [
+            {
+              "id": "https://iiif.test/canvas/1/annotation",
+              "type": "Annotation",
+              "motivation": "painting",
+              "body": {
+                "id": "https://iiif.test/image/full/512,512/0/default.jpg",
+                "type": "Image",
+                "format": "image/jpeg",
+                "width": 512,
+                "height": 512,
+                "service": [
+                  {
+                    "id": "https://iiif.test/image",
+                    "type": "ImageService3",
+                    "profile": "level2"
+                  }
+                ]
+              },
+              "target": "https://iiif.test/canvas/1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "https://iiif.test/canvas/2",
+      "type": "Canvas",
+      "label": { "en": ["Canvas Two"] },
+      "width": 512,
+      "height": 512,
+      "items": [
+        {
+          "id": "https://iiif.test/canvas/2/annotation-page",
+          "type": "AnnotationPage",
+          "items": [
+            {
+              "id": "https://iiif.test/canvas/2/annotation",
+              "type": "Annotation",
+              "motivation": "painting",
+              "body": {
+                "id": "https://iiif.test/image/full/512,512/0/default.jpg",
+                "type": "Image",
+                "format": "image/jpeg",
+                "width": 512,
+                "height": 512,
+                "service": [
+                  {
+                    "id": "https://iiif.test/image",
+                    "type": "ImageService3",
+                    "profile": "level2"
+                  }
+                ]
+              },
+              "target": "https://iiif.test/canvas/2"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

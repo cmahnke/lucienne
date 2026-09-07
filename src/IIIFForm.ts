@@ -56,9 +56,14 @@ export class IIIFForm {
   setup() {
     const loader: (url: string) => void = (url) => {
       try {
-        this.loadUrl(new URL(url), undefined).then((options: IIIFSelect) => {
-          this.createForm(options);
-        });
+        this.loadUrl(new URL(url), undefined)
+          .then((options: IIIFSelect) => {
+            this.createForm(options);
+          })
+          .catch((error) => {
+            this.displayMessage(i18next.t("iiifForm:errorURL"));
+            console.error("Exception", error);
+          });
       } catch (error) {
         this.displayMessage(i18next.t("iiifForm:errorURL"));
         console.error("Exception", error);
@@ -95,9 +100,11 @@ export class IIIFForm {
         this.button?.click();
       }
     } else if (this.cuttingTable.url !== undefined) {
-      this.loadUrl(new URL(this.cuttingTable.url), undefined).then((options: IIIFSelect) => {
-        this.createForm(options);
-      });
+      this.loadUrl(new URL(this.cuttingTable.url), undefined)
+        .then((options: IIIFSelect) => {
+          this.createForm(options);
+        })
+        .catch((error) => this.loadFailed(error));
     } else {
       throw new Error("Input is disabled but no default URL given!");
     }
@@ -129,9 +136,11 @@ export class IIIFForm {
   }
 
   updateForm(url: URL, type?: IIIFType) {
-    this.loadUrl(new URL(url), type).then((options: IIIFSelect) => {
-      this.createForm(options);
-    });
+    this.loadUrl(new URL(url), type)
+      .then((options: IIIFSelect) => {
+        this.createForm(options);
+      })
+      .catch((error) => this.loadFailed(error));
   }
 
   async safeLoadIIIF(url: URL, trySuffix: string = ""): Promise<ReturnJSON> {
@@ -157,6 +166,11 @@ export class IIIFForm {
         }
         return { url: url, json: undefined };
       });
+  }
+
+  loadFailed(error: unknown) {
+    console.error(error);
+    this.displayMessage(i18next.t("iiifForm:errorJson"));
   }
 
   displayMessage(msg: string) {
@@ -254,7 +268,6 @@ export class IIIFForm {
     const includeThumb = true;
     const selectList = document.createElement("icon-dropdown-select");
     selectList.classList.add("select", options.type.toLowerCase());
-    const selectName = "select-" + Math.random().toString(16).slice(5);
     const selectId = "select-" + options.type;
     const labelElement = document.createElement("label");
 
@@ -268,16 +281,13 @@ export class IIIFForm {
 
       labelElement.innerHTML = label;
       labelElement.htmlFor = selectId;
-      if (selectList instanceof HTMLSelectElement) {
-        selectList.name = selectName;
-      }
       selectList.id = selectId;
       labelElement.id = selectId;
     }
     if (clz !== undefined && clz !== "") {
       selectList.classList.add(clz);
     }
-    if (id !== undefined && clz !== "") {
+    if (id !== undefined && id !== "") {
       selectList.id = id;
     }
 
@@ -287,7 +297,10 @@ export class IIIFForm {
       if (includeThumb && optionEntry.thumbnail !== undefined) {
         const thumbnail = document.createElement("img");
         thumbnail.src = optionEntry.thumbnail.toString();
-        option.innerHTML = thumbnail.outerHTML + optionEntry.label;
+        // Build the option content via DOM APIs: labels come from manifests,
+        // assigning them via innerHTML would parse attacker controlled markup
+        option.appendChild(thumbnail);
+        option.appendChild(document.createTextNode(optionEntry.label));
       } else {
         option.text = optionEntry.label;
       }
@@ -321,7 +334,7 @@ export class IIIFForm {
       }
       if (options.type === "Manifest" || options.type === "Image") {
         console.warn(`Autoloading ${options.entries[0].id}`);
-        this.loadImageAPI(new URL(options.entries[0].id));
+        this.loadImageAPI(new URL(options.entries[0].id)).catch((error) => this.loadFailed(error));
       }
     } else {
       options.element?.addEventListener("change", (event: CustomEvent) => {
@@ -347,6 +360,9 @@ export class IIIFForm {
       service = await loadInfoJson(imageAPIEndpoint);
     } catch {
       console.warn(`Failed to get ${imageAPIEndpoint}`);
+    }
+    if (service === undefined) {
+      return service;
     }
     this.cuttingTable.imageService = service;
 

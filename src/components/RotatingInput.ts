@@ -10,6 +10,7 @@ export class RotatingInput extends HTMLElement {
   private isDragging: boolean = false;
   private startX: number = 0;
   private startY: number = 0;
+  private mouseDownListenerAttached: boolean = false;
 
   constructor() {
     super();
@@ -128,6 +129,7 @@ export class RotatingInput extends HTMLElement {
   setupEventListeners(): void {
     if (this.handleElement) {
       this.handleElement.addEventListener("mousedown", this.handleMouseDown);
+      this.mouseDownListenerAttached = true;
       this.handleElement.addEventListener("dragstart", (e: DragEvent) => e.preventDefault());
     }
   }
@@ -135,6 +137,7 @@ export class RotatingInput extends HTMLElement {
   removeEventListeners(): void {
     if (this.handleElement) {
       this.handleElement.removeEventListener("mousedown", this.handleMouseDown);
+      this.mouseDownListenerAttached = false;
     }
     document.removeEventListener("mousemove", this.handleMouseMove);
     document.removeEventListener("mouseup", this.handleMouseUp);
@@ -270,8 +273,12 @@ export class RotatingInput extends HTMLElement {
     }
 
     if (!this._disabled && this.handleElement) {
-      // && !this.hasMouseDownListener()) {
-      this.handleElement.addEventListener("mousedown", this.handleMouseDown);
+      // Re-attach only when a previous disable removed the listener, adding
+      // the same listener reference twice is a no-op but should not be relied on
+      if (!this.mouseDownListenerAttached) {
+        this.handleElement.addEventListener("mousedown", this.handleMouseDown);
+        this.mouseDownListenerAttached = true;
+      }
     } else if (this._disabled) {
       this.removeEventListeners();
       this.isDragging = false;
@@ -281,14 +288,6 @@ export class RotatingInput extends HTMLElement {
       }
     }
   }
-
-  /*
-  private hasMouseDownListener(): boolean {
-    if (!this.handleElement) return false;
-    const listeners = (this.handleElement as any)?.__eventListeners || {};
-    return listeners.mousedown && listeners.mousedown.some((listener: any) => listener.fn === this.handleMouseDown);
-  }
-  */
 
   get value(): number {
     return this.degree;

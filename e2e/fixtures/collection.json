@@ -1,0 +1,20 @@
+{
+  "@context": "http://iiif.io/api/presentation/3/context.json",
+  "id": "https://iiif.test/collection.json",
+  "type": "Collection",
+  "label": { "en": ["Test Collection"] },
+  "items": [
+    {
+      "id": "https://iiif.test/manifest-one.json",
+      "type": "Manifest",
+      "label": { "en": ["Test Manifest One"] },
+      "thumbnail": [{ "id": "https://iiif.test/thumb.jpg", "type": "Image", "format": "image/jpeg" }]
+    },
+    {
+      "id": "https://iiif.test/manifest-two.json",
+      "type": "Manifest",
+      "label": { "en": ["Test Manifest Two"] },
+      "thumbnail": [{ "id": "https://iiif.test/thumb.jpg", "type": "Image", "format": "image/jpeg" }]
+    }
+  ]
+}

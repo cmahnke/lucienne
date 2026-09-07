@@ -1,7 +1,6 @@
 import typescript from "@rollup/plugin-typescript";
 import { dts } from "rollup-plugin-dts";
 import { nodeResolve } from "@rollup/plugin-node-resolve";
-import terser from "@rollup/plugin-terser";
 import commonjs from "@rollup/plugin-commonjs";
 import alias from "@rollup/plugin-alias";
 import json from "@rollup/plugin-json";
@@ -259,82 +258,6 @@ const config = [
       }),
 
       nodeResolve()
-    ]
-  },
-  {
-    input: "src/CuttingTable.ts",
-    output: [
-      {
-        file: `dist/${artifactName}-${artifactversion}-complete.iife.min.js`,
-        format: "iife",
-        name: "PatternGenerator",
-        sourcemap: true,
-        assetFileNames: "[name][extname]"
-      }
-    ],
-    plugins: [
-      alias(aliasConfig),
-      json({ preferConst: true }),
-      postcss({
-        extract: `${artifactName}.css`,
-        sourceMap: true,
-        use: [
-          [
-            "sass",
-            {
-              pkgImporter: new NodePackageImporter()
-            }
-          ]
-        ],
-        plugins: [
-          url([
-            {
-              url: "inline",
-              maxSize: 100,
-              fallback: "copy",
-              basePath: path.resolve("src/assets/scss"),
-              assetsPath: path.resolve("src/assets/images")
-            }
-          ]),
-          url([
-            {
-              url: (asset) => {
-                if (asset.pathname === null || (asset.url !== undefined && asset.url.startsWith("data:"))) {
-                  return;
-                }
-                if (asset.pathname !== null && asset.pathname.startsWith("@fontsource")) {
-                  const src = path.resolve(path.join("node_modules", asset.pathname));
-                  const fontFile = path.basename(asset.pathname);
-                  const dest = path.join(fontPath, fontFile);
-                  if (!fs.existsSync(dest)) {
-                    fs.cpSync(src, dest);
-                  }
-                  const urlPath = path.join(fontURLPath, fontFile);
-                  return urlPath;
-                }
-              },
-              multi: true
-            }
-          ])
-        ]
-      }),
-      commonjs(),
-      copy({
-        targets: [
-          {
-            src: "src/index.html",
-            dest: "build",
-            transform: (contents, filename) =>
-              contents
-                .toString()
-                .replace("./main.ts", `${artifactName}-complete.es.min.js`)
-                .replace("</title>", `</title><link rel="stylesheet" crossorigin href="${artifactName}.css">`)
-          }
-        ]
-      }),
-      typescript({ ...typescriptOptions, sourceMap: false, inlineSources: false }),
-      nodeResolve(),
-      terser()
     ]
   }
 ];

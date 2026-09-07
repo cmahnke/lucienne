@@ -115,16 +115,12 @@ export class CuttingTable {
     urls?: URL | { url: string; label: string }[],
     shifts: boolean = false
   ) {
-    if (element !== undefined) {
-      this.container = element;
-    } else {
-      this.container = document.querySelector<HTMLDivElement>(`.${CuttingTable.defaultId}`)!;
-    }
-    this.container.classList.add("lucienne");
-
-    if (this.container === undefined) {
+    const container = element !== undefined ? element : document.querySelector<HTMLDivElement>(`.${CuttingTable.defaultId}`);
+    if (container === null || container === undefined) {
       throw new Error("Couldn't setup element");
     }
+    this.container = container;
+    this.container.classList.add("lucienne");
 
     //Debug?
     if ("debug" in element.dataset && element.dataset.debug !== undefined && element.dataset.debug !== "") {
@@ -266,6 +262,11 @@ export class CuttingTable {
       console.warn(`Failed to get ${imageAPIEndpoint}`);
     }
 
+    if (service === undefined) {
+      this.form.displayMessage(i18next.t("iiifForm:errorJson"));
+      return;
+    }
+
     if (this.renderer !== undefined) {
       this.renderer.source = service;
     }
@@ -356,15 +357,29 @@ export class CuttingTable {
                 this.form.urlInput = url;
 
                 jsonLoadCallback = () => {
-                  this.cuts.loadJSONLD(json as CutJSONLD);
-                  this.updateControls();
+                  try {
+                    this.cuts.loadJSONLD(json as CutJSONLD);
+                    this.updateControls();
+                  } catch (error) {
+                    console.error(error);
+                    this.form.displayMessage(
+                      i18next.t("cuttingTable:uploadError") + ": " + (error instanceof Error ? error.message : String(error))
+                    );
+                  }
                 };
               } else {
                 url = new URL((json as CutJSON).url);
                 this.form.urlInput = url;
                 jsonLoadCallback = () => {
-                  this.cuts.loadJSON(json as CutJSON);
-                  this.updateControls();
+                  try {
+                    this.cuts.loadJSON(json as CutJSON);
+                    this.updateControls();
+                  } catch (error) {
+                    console.error(error);
+                    this.form.displayMessage(
+                      i18next.t("cuttingTable:uploadError") + ": " + (error instanceof Error ? error.message : String(error))
+                    );
+                  }
                 };
               }
               await this.loadImageAPI(url);
@@ -541,14 +556,9 @@ export class CuttingTable {
       initialUrls = dataList.outerHTML;
     }
 
-    let url = "",
-      urlInput = "";
-    if (this.url !== undefined) {
-      url = this.url.toString();
-    }
-
+    let urlInput = "";
     if (this._urlInput) {
-      urlInput = `<input class="url-input" type="url" value="${url}" name="url" id="collection-url" pattern="https://.*" list="${listId}" required />
+      urlInput = `<input class="url-input" type="url" name="url" id="collection-url" pattern="https://.*" list="${listId}" required />
           ${initialUrls}
           <button type="button" class="load-url-button">${i18next.t("cuttingTable:loadUrl")}</button>`;
     }
@@ -577,6 +587,13 @@ export class CuttingTable {
       <div class="${CuttingTable.rendererElementClass} output-area">
       </div>
     `;
+
+    // Set the initial URL via property assignment: interpolating it into the
+    // HTML above would allow attribute injection through URLs containing quotes
+    const urlInputElement = this.container.querySelector<HTMLInputElement>(".url-input");
+    if (urlInputElement !== null && this.url !== undefined) {
+      urlInputElement.value = this.url.toString();
+    }
   }
 
   async setupControls() {
@@ -720,7 +737,7 @@ export class CuttingTable {
     };
 
     OpenSeadragon.Viewport.prototype._setContentBounds = function (bounds, contentFactor) {
-      if (isNaN(bounds.x) || isNaN(bounds.y) || isNaN(bounds.width) || isNaN(bounds.width)) {
+      if (isNaN(bounds.x) || isNaN(bounds.y) || isNaN(bounds.width) || isNaN(bounds.height)) {
         return;
       }
 

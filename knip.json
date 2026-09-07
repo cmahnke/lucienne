@@ -1,5 +1,13 @@
 {
   "$schema": "https://unpkg.com/knip@5/schema.json",
   "entry": ["src/CuttingTable.ts", "src/main.ts"],
-  "project": ["**/*.{js,cjs,mjs,jsx,ts,cts,mts,tsx}!"]
+  "project": ["**/*.{js,cjs,mjs,jsx,ts,cts,mts,tsx}"],
+  "ignore": ["e2e/**"],
+  "ignoreDependencies": [
+    "@fontsource-utils/scss",
+    "@fontsource-variable/league-spartan",
+    "@fontsource-variable/raleway",
+    "postcss-scss",
+    "better-docs"
+  ]
 }

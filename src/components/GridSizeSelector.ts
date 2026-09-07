@@ -28,6 +28,15 @@ export class GridSizeSelector extends HTMLElement {
   triggerButton: HTMLButtonElement | null = null;
   updateButton: HTMLButtonElement | null = null;
 
+  // Stable handler references, addEventListener/removeEventListener must be
+  // called with the exact same function reference for removal to work
+  private boundMouseDown = this.handleMouseDown.bind(this);
+  private boundMouseMove = this.handleMouseMove.bind(this);
+  private boundMouseUp = this.handleMouseUp.bind(this);
+  private boundInputChange = this.handleInputChange.bind(this);
+  private handleUpdateClick = () => this.handleUpdateSize();
+  private handleTriggerClick = () => this.handleToggleGrid();
+
   constructor(maxCols?: number, maxRows?: number) {
     super();
     if (maxCols !== undefined) {
@@ -62,48 +71,48 @@ export class GridSizeSelector extends HTMLElement {
   addEventListeners() {
     const gridArea = this.shadowRoot?.querySelector<HTMLElement>(".grid-area");
     if (gridArea && !this.disabled) {
-      gridArea.addEventListener("mousedown", this.handleMouseDown.bind(this));
-      gridArea.addEventListener("mousemove", this.handleMouseMove.bind(this));
-      gridArea.addEventListener("mouseup", this.handleMouseUp.bind(this));
-      gridArea.addEventListener("mouseleave", this.handleMouseUp.bind(this));
+      gridArea.addEventListener("mousedown", this.boundMouseDown);
+      gridArea.addEventListener("mousemove", this.boundMouseMove);
+      gridArea.addEventListener("mouseup", this.boundMouseUp);
+      gridArea.addEventListener("mouseleave", this.boundMouseUp);
     }
 
     if (this.widthInput && !this.disabled) {
-      this.widthInput.addEventListener("change", this.handleInputChange.bind(this));
+      this.widthInput.addEventListener("change", this.boundInputChange);
     }
     if (this.heightInput && !this.disabled) {
-      this.heightInput.addEventListener("change", this.handleInputChange.bind(this));
+      this.heightInput.addEventListener("change", this.boundInputChange);
     }
 
     if (this.updateButton && !this._disableSizeUpdate && !this.disabled) {
-      this.updateButton.addEventListener("click", () => this.handleUpdateSize());
+      this.updateButton.addEventListener("click", this.handleUpdateClick);
     }
     if (this.triggerButton && !this.disabled) {
-      this.triggerButton.addEventListener("click", () => this.handleToggleGrid());
+      this.triggerButton.addEventListener("click", this.handleTriggerClick);
     }
   }
 
   removeEventListeners() {
     const gridArea = this.shadowRoot?.querySelector<HTMLElement>(".grid-area");
     if (gridArea) {
-      gridArea.removeEventListener("mousedown", this.handleMouseDown.bind(this));
-      gridArea.removeEventListener("mousemove", this.handleMouseMove.bind(this));
-      gridArea.removeEventListener("mouseup", this.handleMouseUp.bind(this));
-      gridArea.removeEventListener("mouseleave", this.handleMouseUp.bind(this));
+      gridArea.removeEventListener("mousedown", this.boundMouseDown);
+      gridArea.removeEventListener("mousemove", this.boundMouseMove);
+      gridArea.removeEventListener("mouseup", this.boundMouseUp);
+      gridArea.removeEventListener("mouseleave", this.boundMouseUp);
     }
 
     if (this.widthInput) {
-      this.widthInput.removeEventListener("change", this.handleInputChange.bind(this));
+      this.widthInput.removeEventListener("change", this.boundInputChange);
     }
     if (this.heightInput) {
-      this.heightInput.removeEventListener("change", this.handleInputChange.bind(this));
+      this.heightInput.removeEventListener("change", this.boundInputChange);
     }
 
     if (this.updateButton) {
-      this.updateButton.removeEventListener("click", () => this.handleUpdateSize());
+      this.updateButton.removeEventListener("click", this.handleUpdateClick);
     }
     if (this.triggerButton) {
-      this.triggerButton.removeEventListener("click", () => this.handleToggleGrid());
+      this.triggerButton.removeEventListener("click", this.handleTriggerClick);
     }
   }
 

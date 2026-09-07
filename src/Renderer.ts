@@ -155,30 +155,37 @@ export class Renderer {
     const rows = this._rows;
 
     this._clearTiles();
-    Renderer._loadTiles(this.viewer, this._source, columns * rows).then((result) => {
-      if (typeof result === "boolean" && result) {
-        this.viewer?.world.arrange({ rows: this._rows, columns: this._columns, tileMargin: 0, immediately: true });
-        if (!this._notificationQueue.length) {
-          // Removing the call to this.preview() breaks the image downloader. Maybe hoth methods can be merged
+    Renderer._loadTiles(this.viewer, this._source, columns * rows)
+      .then((result) => {
+        if (typeof result === "boolean" && result) {
+          this.viewer?.world.arrange({ rows: this._rows, columns: this._columns, tileMargin: 0, immediately: true });
+          if (!this._notificationQueue.length) {
+            // Removing the call to this.preview() breaks the image downloader. Maybe hoth methods can be merged
+            this.preview();
+            this.layout(true);
+          } else {
+            this._notificationQueue.forEach((notification: CutNotification) => {
+              this.notify(notification);
+            });
+          }
+          this.viewer?.raiseEvent("source-loaded");
+          this._loaded = true;
           this.preview();
-          this.layout(true);
+          this.enableControls();
         } else {
-          this._notificationQueue.forEach((notification: CutNotification) => {
-            this.notify(notification);
-          });
+          if (typeof result === "boolean") {
+            throw new Error(`Failed to load TiledImage for unknown reasons`);
+          } else {
+            throw new Error(result);
+          }
         }
-        this.viewer?.raiseEvent("source-loaded");
-        this._loaded = true;
-        this.preview();
-        this.enableControls();
-      } else {
-        if (typeof result === "boolean") {
-          throw new Error(`Failed to load TiledImage for unknown reasons`);
-        } else {
-          throw new Error(result);
+      })
+      .catch((error) => {
+        console.error("Failed to load tiles:", error);
+        if (this.statusContainer !== null) {
+          this.statusContainer.innerHTML = i18next.t("renderer:error") + ": " + error.message;
         }
-      }
-    });
+      });
   }
 
   get width(): number | undefined {
@@ -288,7 +295,7 @@ export class Renderer {
     if (
       CutPosition.Left in variation &&
       variation[CutPosition.Left] !== undefined &&
-      CutPosition.Right &&
+      CutPosition.Right in variation &&
       variation[CutPosition.Right] !== undefined
     ) {
       if (variation[CutPosition.Left] != 0 && variation[CutPosition.Right] != 0) {
@@ -299,7 +306,7 @@ export class Renderer {
     if (
       CutPosition.Top in variation &&
       variation[CutPosition.Top] !== undefined &&
-      CutPosition.Bottom &&
+      CutPosition.Bottom in variation &&
       variation[CutPosition.Bottom] !== undefined
     ) {
       if (variation[CutPosition.Top] != 0 && variation[CutPosition.Bottom] != 0) {
@@ -331,7 +338,7 @@ export class Renderer {
   }
 
   setupViewer(element?: HTMLElement) {
-    if (element !== undefined) {
+    if (element === undefined) {
       element = this.viewerElement;
     }
 
@@ -508,12 +515,11 @@ export class Renderer {
     }
     this.viewer.world.arrange({ rows: rows, columns: columns, tileMargin: 0, immediately: true });
     const referenceImage: OpenSeadragon.TiledImage | undefined = this.viewer.world.getItemAt(0);
-    referenceImage.setPosition(new OpenSeadragon.Point(0, 0), immediately);
-    const transformedClipRect = referenceImage.imageToViewportRectangle(this.clipRect);
-
     if (referenceImage === undefined) {
       throw new Error("Couldn't get first tiled image!");
     }
+    referenceImage.setPosition(new OpenSeadragon.Point(0, 0), immediately);
+    const transformedClipRect = referenceImage.imageToViewportRectangle(this.clipRect);
 
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < columns; c++) {
@@ -1279,7 +1285,7 @@ export class Renderer {
           const errMsg = i18next.t("renderer:error") + ": " + e.message;
           this.statusContainer.innerHTML = errMsg;
         }
-        throw new Error(e, { cause: e });
+        throw e instanceof Error ? e : new Error(String(e), { cause: e });
       }
     };
     if (this._download) {

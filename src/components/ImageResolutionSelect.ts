@@ -4,20 +4,17 @@ export class ImageResolutionSelect extends HTMLElement {
   private shadow: ShadowRoot;
   private displayElement: HTMLElement;
   private optionsContainer: HTMLElement;
-  private options: { value: string; label: string }[] = [
-    { value: "custom", label: i18next.t("imageResolutionSelect:custom") },
-    { value: "1920x1080", label: "1080p (Full HD) (1920x1080)" },
-    { value: "1280x720", label: "720p (HD) (1280x720)" },
-    { value: "800x600", label: "SVGA (800x600)" },
-    { value: "640x480", label: "VGA (640x480)" },
-    { value: "1080x1080", label: "Instagram Post (1080x1080)" },
-    { value: "1080x1920", label: "Instagram Story (1080x1920)" },
-    { value: "1200x630", label: "Facebook Post (1200x630)" },
-    { value: "1280x720", label: "YouTube Thumbnail (1280x720)" }
-  ];
+  private options: { value: string; label: string }[] = [];
   private _disabled = false;
   private _value: string | null = null;
   private _selectedIndex = -1;
+
+  private handleDocumentClick = (event: Event) => {
+    if (!this.shadow.contains(event.target as Node) && this.optionsContainer.classList.contains("open")) {
+      this.optionsContainer.classList.remove("open");
+    }
+  };
+
   private _customWidth: number = 0;
   private _customHeight: number = 0;
   private customInputs: HTMLDivElement | null = null;
@@ -33,7 +30,32 @@ export class ImageResolutionSelect extends HTMLElement {
     this.setupDOM();
     this.applyStyles();
     this.setupEventListeners();
+    // Initialized here instead of a field initializer: i18next is initialized
+    // when the CuttingTable module is evaluated, element construction happens
+    // later, so the label is only now resolvable
+    this.options = [
+      { value: "custom", label: i18next.t("imageResolutionSelect:custom") },
+      { value: "1920x1080", label: "1080p (Full HD) (1920x1080)" },
+      { value: "1280x720", label: "720p (HD) (1280x720)" },
+      { value: "800x600", label: "SVGA (800x600)" },
+      { value: "640x480", label: "VGA (640x480)" },
+      { value: "1080x1080", label: "Instagram Post (1080x1080)" },
+      { value: "1080x1920", label: "Instagram Story (1080x1920)" },
+      { value: "1200x630", label: "Facebook Post (1200x630)" }
+    ];
     this.mergeOptions();
+  }
+
+  connectedCallback() {
+    this.populateOptions();
+    this.showCustomInputs();
+    if (this.confirmButton) {
+      this.enableConfirmButton();
+    }
+  }
+
+  disconnectedCallback() {
+    document.removeEventListener("click", this.handleDocumentClick);
   }
 
   private mergeOptions() {
@@ -79,14 +101,6 @@ export class ImageResolutionSelect extends HTMLElement {
       this.options = [customOption, ...uniqueOptions];
     } else {
       this.options = uniqueOptions;
-    }
-  }
-
-  connectedCallback() {
-    this.populateOptions();
-    this.showCustomInputs();
-    if (this.confirmButton) {
-      this.enableConfirmButton();
     }
   }
 
@@ -290,11 +304,7 @@ export class ImageResolutionSelect extends HTMLElement {
       }
     });
 
-    document.addEventListener("click", (event) => {
-      if (!this.shadow.contains(event.target as Node) && this.optionsContainer.classList.contains("open")) {
-        this.optionsContainer.classList.remove("open");
-      }
-    });
+    document.addEventListener("click", this.handleDocumentClick);
 
     this.displayElement.addEventListener("keydown", (event) => {
       if (this.disabled) return;

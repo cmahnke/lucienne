@@ -7,3 +7,7 @@ src/assets/fonts/
 public/**
 .stylelintcache
 .DS_Store
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/

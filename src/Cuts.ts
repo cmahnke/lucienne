@@ -31,6 +31,13 @@ export class Cuts {
 
   initCutShapes(positions: CutPosition[]) {
     positions.forEach((position) => {
+      // Remove existing shapes first, initCutShapes can be called again e.g.
+      // by loadJSON - re-creating shapes without removing them would leak the
+      // old ones on the fabric canvas
+      const existing = this.shapes[position];
+      if (existing !== undefined) {
+        this.overlay.fabricCanvas().remove(existing[0], existing[1]);
+      }
       const line = this.createLine();
       line.visible = false;
       const cover = this.createCover();
@@ -51,7 +58,7 @@ export class Cuts {
     return "";
   }
 
-  get cutPostions() {
+  get cutPositions() {
     return Object.keys(this.shapes) as unknown as CutPosition[];
   }
 
@@ -490,7 +497,7 @@ export class Cuts {
         });
       }
     } else {
-      throw new Error("THis should never happen!");
+      throw new Error("This should never happen!");
     }
     this.lastAxis = position;
     line.setCoords();
@@ -505,7 +512,7 @@ export class Cuts {
   }
 
   addCallback(func: CutNotifyFunction): void {
-    if (this.changeCallback !== undefined) {
+    if (this.changeCallback === undefined) {
       this.changeCallback = [];
     }
     this.changeCallback.push(func);
@@ -528,17 +535,17 @@ export class Cuts {
     }
   }
 
-  static expandPositions(cutPostions: { [key in CutPosition]?: number }, all: boolean = false): { [key: string]: number } {
+  static expandPositions(cutPositions: { [key in CutPosition]?: number }, all: boolean = false): { [key: string]: number } {
     const positions: { [key: string]: number } = {};
     let validPositions: CutPosition[];
     if (!all) {
-      validPositions = Object.keys(cutPostions) as unknown as CutPosition[];
+      validPositions = Object.keys(cutPositions) as unknown as CutPosition[];
     } else {
       validPositions = Object.keys(CutPosition) as unknown as CutPosition[];
     }
     validPositions.forEach((key: CutPosition) => {
-      if (key in cutPostions && cutPostions[key] !== undefined) {
-        positions[CutPositionUtil.toString(key)] = cutPostions[key];
+      if (key in cutPositions && cutPositions[key] !== undefined) {
+        positions[CutPositionUtil.toString(key)] = cutPositions[key];
       } else {
         positions[CutPositionUtil.toString(key)] = 0;
       }
@@ -628,7 +635,7 @@ export class Cuts {
     this.url = new URL(json.url);
     this.width = json.width;
     this.height = json.height;
-    this.initCutShapes(this.cutPostions);
+    this.initCutShapes(this.cutPositions);
     this.setSize(this.width, this.height);
 
     if ("cuts" in json && json.cuts !== undefined) {
@@ -661,7 +668,14 @@ export class Cuts {
   }
 
   loadJSONLD(json: CutJSONLD) {
-    const dimensions = json.target.selector.value.split("=")[1].split(",");
+    const selectorValue = json?.target?.selector?.value;
+    if (typeof selectorValue !== "string" || !selectorValue.startsWith("xywh=")) {
+      throw new Error("Invalid JSONLD: missing or unsupported fragment selector");
+    }
+    const dimensions = selectorValue.split("=")[1].split(",");
+    if (dimensions.length !== 4 || dimensions.some((dimension) => isNaN(Number(dimension)))) {
+      throw new Error("Invalid JSONLD: malformed xywh fragment");
+    }
 
     const cutJson: CutJSON = {
       url: json.target.source,
@@ -680,7 +694,13 @@ export class Cuts {
     if (typeof json.body.value === "string") {
       const parser = new DOMParser();
       const svg = parser.parseFromString(json.body.value, "image/svg+xml");
-      const patternElement = svg.querySelector("pattern")!;
+      if (svg.querySelector("parsererror") !== null) {
+        throw new Error("Invalid JSONLD: body value is not a parsable SVG pattern");
+      }
+      const patternElement = svg.querySelector("pattern");
+      if (patternElement === null) {
+        throw new Error("Invalid JSONLD: pattern element missing in SVG");
+      }
       const offsets: { [key: string]: number } = {};
       if (patternElement.hasAttribute("x") && patternElement.getAttribute("x") !== "0") {
         offsets.Right = Number(patternElement.getAttribute("x"));
@@ -691,7 +711,10 @@ export class Cuts {
       if (Object.keys(offsets).length) {
         cutJson.offsets = offsets;
       }
-      const rectElement = svg.querySelector("rect")!;
+      const rectElement = svg.querySelector("rect");
+      if (rectElement === null) {
+        throw new Error("Invalid JSONLD: rect element missing in SVG");
+      }
       const cuts: { [key: string]: number } = { Left: 0, Top: 0, Right: Number(dimensions[2]), Bottom: Number(dimensions[3]) };
       if (rectElement.hasAttribute("x") && rectElement.getAttribute("x") !== "0") {
         cuts.Left = Number(rectElement.getAttribute("x"));

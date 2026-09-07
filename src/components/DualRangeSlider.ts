@@ -112,8 +112,9 @@ export class DualRangeSlider extends HTMLElement {
         if (this.sliderMin) this.sliderMin.value = String(newValue);
         this.updateAttribute("value-min", String(newValue));
         this.updateVisuals();
-        this.dispatchChangeEvent();
-        this.dispatchInputEvent();
+        // No events dispatched here on purpose: this setter is also used for
+        // programmatic updates, dispatching would feed the (stale) slider
+        // state back into event listeners and corrupt the applied values
       }
     } else if (this.isConnected && this.sliderMin && parseFloat(this.sliderMin.value) !== newValue) {
       this.sliderMin.value = String(newValue);
@@ -135,8 +136,7 @@ export class DualRangeSlider extends HTMLElement {
         if (this.sliderMax) this.sliderMax.value = String(newValue);
         this.updateAttribute("value-max", String(newValue));
         this.updateVisuals();
-        this.dispatchChangeEvent();
-        this.dispatchInputEvent();
+        // No events dispatched here on purpose, see the valueMin setter
       }
     } else if (this.isConnected && this.sliderMax && parseFloat(this.sliderMax.value) !== newValue) {
       this.sliderMax.value = String(newValue);
@@ -290,7 +290,6 @@ export class DualRangeSlider extends HTMLElement {
         input[type="range"]:active::-moz-range-thumb { background-color: var(--thumb-active-color); }
         input[type="range"]::-moz-range-track { background: transparent; border: none; }
       `;
-    style.textContent += this.isVertical() ? "" : "";
     this.shadow.appendChild(style);
   }
 
@@ -355,6 +354,7 @@ export class DualRangeSlider extends HTMLElement {
     if (this._disabled) return;
     const target = event.target as HTMLInputElement;
     this.valueMin = parseFloat(target.value);
+    this.dispatchChangeEvent();
     this.dispatchInputEvent();
   };
 
@@ -362,6 +362,7 @@ export class DualRangeSlider extends HTMLElement {
     if (this._disabled) return;
     const target = event.target as HTMLInputElement;
     this.valueMax = parseFloat(target.value);
+    this.dispatchChangeEvent();
     this.dispatchInputEvent();
   };
 

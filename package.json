@@ -44,7 +44,9 @@
     "svgo": "npx svgo -f ./images -o ./src/assets/images",
     "knip": "npx knip",
     "jsdoc": "npx jsdoc -c jsdoc.config.json -r .",
-    "site": "npm run clean && npm run svgo && npx vite build && npm run jsdoc"
+    "site": "npm run clean && npm run svgo && npx vite build && npm run jsdoc",
+    "test:e2e": "playwright test",
+    "test": "npm run test:e2e"
   },
   "dependencies": {
     "@allmaps/iiif-parser": "^1.0.0-beta.48",
@@ -56,19 +58,16 @@
     "openseadragon-fabric-overlay": "^2.0.0"
   },
   "devDependencies": {
-    "@allmaps/types": "^1.0.0-beta.23",
     "@fontsource-utils/scss": "^0.2.4",
     "@fontsource-variable/league-spartan": "^5.3.0",
     "@fontsource-variable/raleway": "^5.3.0",
+    "@playwright/test": "^1.63.0",
     "@rollup/plugin-alias": "^6.0.0",
     "@rollup/plugin-commonjs": "^29.0.3",
     "@rollup/plugin-json": "^6.1.0",
     "@rollup/plugin-node-resolve": "^16.0.3",
     "@rollup/plugin-replace": "^6.0.3",
-    "@rollup/plugin-terser": "^1.0.0",
     "@rollup/plugin-typescript": "^12.3.0",
-    "@types/i18next": "^13.0.0",
-    "@types/jsdom": "^30.0.0",
     "@types/node": "^26.4.1",
     "better-docs": "^2.7.3",
     "browserslist-to-esbuild": "^2.1.1",
@@ -95,8 +94,6 @@
     "typescript-eslint": "^8.69.0",
     "vite": "^8.2.2",
     "vite-plugin-checker": "^0.14.5",
-    "vite-plugin-eslint": "^1.8.1",
-    "vite-plugin-singlefile": "^2.3.3",
     "vite-plugin-static-copy": "^4.1.1",
     "vite-plugin-stylelint": "^6.3.0",
     "vite-plugin-svgo": "^2.0.0"

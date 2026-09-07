@@ -60,7 +60,7 @@ export type CutNotification = [
   { [key in CutPosition]?: number }?,
   { [key in CutPosition]?: number }?
 ];
-export type CutNotifyFunction = (notifiction: CutNotification) => void;
+export type CutNotifyFunction = (notification: CutNotification) => void;
 
 export type CutJSON = {
   url: string;

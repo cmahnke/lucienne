@@ -2,10 +2,16 @@ export class IconDropdownSelect extends HTMLElement {
   private shadow: ShadowRoot;
   private displayElement: HTMLElement;
   private optionsContainer: HTMLElement;
-  private options: { value: string; innerHTML: string }[] = [];
+  private options: { value: string; nodes: Node[] }[] = [];
   private _disabled = false;
   private _value: string | null = null;
   private _selectedIndex = -1;
+
+  private handleDocumentClick = (event: Event) => {
+    if (!this.shadow.contains(event.target as Node) && this.optionsContainer.classList.contains("open")) {
+      this.optionsContainer.classList.remove("open");
+    }
+  };
 
   constructor() {
     super();
@@ -21,6 +27,10 @@ export class IconDropdownSelect extends HTMLElement {
 
   connectedCallback() {
     this.populateOptions();
+  }
+
+  disconnectedCallback() {
+    document.removeEventListener("click", this.handleDocumentClick);
   }
 
   static get observedAttributes() {
@@ -154,11 +164,7 @@ export class IconDropdownSelect extends HTMLElement {
       }
     });
 
-    document.addEventListener("click", (event) => {
-      if (!this.shadow.contains(event.target as Node) && this.optionsContainer.classList.contains("open")) {
-        this.optionsContainer.classList.remove("open");
-      }
-    });
+    document.addEventListener("click", this.handleDocumentClick);
 
     this.displayElement.addEventListener("keydown", (event) => {
       if (this.disabled) return;
@@ -215,14 +221,17 @@ export class IconDropdownSelect extends HTMLElement {
     this.optionsContainer.innerHTML = "";
     this.options = Array.from(this.children).map((child) => {
       const value = child.getAttribute("value") || "";
-      const innerHTML = child.innerHTML || "";
-      return { value, innerHTML };
+      // Clone the child nodes instead of serializing them to HTML: the labels
+      // come from manifests, round-tripping them via innerHTML would parse
+      // (and potentially execute) attacker controlled markup
+      const nodes = Array.from(child.childNodes).map((node) => node.cloneNode(true));
+      return { value, nodes };
     });
 
     this.options.forEach((option) => {
       const optionElement = document.createElement("div");
       optionElement.classList.add("option");
-      optionElement.innerHTML = option.innerHTML;
+      optionElement.replaceChildren(...option.nodes.map((node) => node.cloneNode(true)));
       optionElement.addEventListener("click", () => {
         this.value = option.value;
         this.optionsContainer.classList.remove("open");
@@ -237,11 +246,12 @@ export class IconDropdownSelect extends HTMLElement {
 
   private updateDisplay() {
     const selectedOption = this.options.find((option) => option.value === this.value);
-    this.displayElement.innerHTML = "";
     if (selectedOption) {
-      this.displayElement.innerHTML = selectedOption.innerHTML;
+      this.displayElement.replaceChildren(...selectedOption.nodes.map((node) => node.cloneNode(true)));
     } else if (this.options.length > 0) {
-      this.displayElement.innerHTML = this.options[0].innerHTML;
+      this.displayElement.replaceChildren(...this.options[0].nodes.map((node) => node.cloneNode(true)));
+    } else {
+      this.displayElement.replaceChildren();
     }
   }
 
