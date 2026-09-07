@@ -19,4 +19,4 @@ if (urlParams.has("url")) {
 
 const generatorElement = document.querySelector<HTMLDivElement>("#generator")!;
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-const cuttingTable = new CuttingTable(generatorElement, true, true, true, true, urls, false);
+const cuttingTable = new CuttingTable(generatorElement, true, true, true, true, urls, true);

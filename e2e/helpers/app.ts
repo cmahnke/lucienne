@@ -6,9 +6,9 @@ import { mockIIIF } from "../fixtures/mock";
  * Opens the demo page with all IIIF traffic mocked and waits for the
  * collection dropdown to be populated by the auto-load mechanism.
  */
-export async function openApp(page: Page) {
+export async function openApp(page: Page, path = "/") {
   await mockIIIF(page);
-  await page.goto("/");
+  await page.goto(path);
   await expect(page.locator("#select-Collection")).toBeVisible();
 }
 
@@ -16,8 +16,8 @@ export async function openApp(page: Page) {
  * Selects the first manifest of the mocked collection, then the first canvas
  * of that manifest and waits for the image (and its controls) to be loaded.
  */
-export async function loadTestImage(page: Page) {
-  await openApp(page);
+export async function loadTestImage(page: Page, path = "/") {
+  await openApp(page, path);
 
   // Collection -> Manifest
   await page.locator("#select-Collection .display").click();

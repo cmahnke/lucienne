@@ -79,6 +79,11 @@ export type CutJSONLD = {
     id: string;
     type: "Dataset" | "Image" | string;
     value: { [key: string]: { [key: string]: number } } | string;
+    // The structured state rides along the SVG pattern so a re-import
+    // restores the exact cuts, offsets and rotations
+    cuts?: { [key: string]: number };
+    offsets?: { [key: string]: number };
+    rotations?: { [key: string]: number };
   };
   target: {
     source: string;

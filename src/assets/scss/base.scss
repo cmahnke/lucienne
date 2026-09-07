@@ -123,10 +123,66 @@ $active-color: #007bff;
     }
   }
 
+  .help-dialog {
+    border: 1px solid currentcolor;
+    border-radius: 0.5em;
+    padding: 1em 1.5em;
+    max-width: 30em;
+    font-family: var(--font-family);
+
+    &::backdrop {
+      background: rgb(0 0 0 / 40%);
+    }
+
+    h2 {
+      margin-top: 0;
+    }
+
+    .help-list {
+      margin: 0 0 1em;
+      padding-left: 1.2em;
+
+      li {
+        margin-bottom: 0.4em;
+      }
+    }
+
+    .help-close {
+      display: block;
+      margin-left: auto;
+      padding: 0.3em 1em;
+      cursor: pointer;
+    }
+  }
+
   .source-select {
     display: flex;
     flex-flow: row wrap;
     justify-content: center;
+
+    .controls.button.help-button {
+      // The other control icons are absolutely positioned inside the viewer;
+      // the help icon sits inline next to the load URL button and therefore
+      // cannot live in the viewer-scoped .controls.button block.
+      // align-self keeps the icon centered in the stretched flex row
+      // (the default align-items: stretch must stay intact - it sets the
+      // URL input's height)
+      display: block;
+      height: 2em;
+      width: 2em;
+      position: static !important;
+      content: url("../images/help.svg?inline");
+      margin-left: 1em;
+      align-self: center;
+      z-index: 10;
+      cursor: pointer;
+      filter: drop-shadow(0 0 1px black) drop-shadow(0 0 1px black);
+      transition: all 300ms;
+
+      &:hover {
+        transform: scale(1.1);
+      }
+    }
 
     .url-input {
       width: 30%;
@@ -207,7 +263,7 @@ $active-color: #007bff;
       }
 
       &.offset {
-        /*display: none;*/
+        display: none;
       }
 
       &.horizontal {

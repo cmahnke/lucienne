@@ -79,7 +79,7 @@ export class Cuts {
       height = height - this.positions[CutPosition.Top];
     }
     if (CutPosition.Bottom in this.positions && this.positions[CutPosition.Bottom] !== undefined) {
-      height = height - (this.width - this.positions[CutPosition.Bottom]);
+      height = height - (this.height - this.positions[CutPosition.Bottom]);
     }
     return height;
   }
@@ -370,10 +370,17 @@ export class Cuts {
         delete this.offsets[CutPosition.Left];
       }
       this.lastAxis = CutPosition.Right;
+    } else {
+      // 0 neutralizes the axis: without this the model kept the previous
+      // side's value while the slider showed 0
+      if (CutPosition.Left in this.offsets) {
+        delete this.offsets[CutPosition.Left];
+      }
+      if (CutPosition.Right in this.offsets) {
+        delete this.offsets[CutPosition.Right];
+      }
     }
-    if (offset != 0) {
-      this.notify();
-    }
+    this.notify();
   }
 
   set offsetY(offset: number) {
@@ -389,10 +396,17 @@ export class Cuts {
         delete this.offsets[CutPosition.Top];
       }
       this.lastAxis = CutPosition.Bottom;
+    } else {
+      // 0 neutralizes the axis: without this the model kept the previous
+      // side's value while the slider showed 0
+      if (CutPosition.Top in this.offsets) {
+        delete this.offsets[CutPosition.Top];
+      }
+      if (CutPosition.Bottom in this.offsets) {
+        delete this.offsets[CutPosition.Bottom];
+      }
     }
-    if (offset != 0) {
-      this.notify();
-    }
+    this.notify();
   }
 
   set rotateX(deg: number) {
@@ -539,9 +553,16 @@ export class Cuts {
     const positions: { [key: string]: number } = {};
     let validPositions: CutPosition[];
     if (!all) {
-      validPositions = Object.keys(cutPositions) as unknown as CutPosition[];
+      // The stored objects use the numeric enum values as keys; the filter
+      // guards against name keys sneaking in
+      validPositions = Object.keys(cutPositions)
+        .filter((key) => !isNaN(Number(key)))
+        .map((key) => Number(key) as CutPosition);
     } else {
-      validPositions = Object.keys(CutPosition) as unknown as CutPosition[];
+      // Explicit enum values: Object.keys(CutPosition) would also yield the
+      // reverse mappings and toString of a name key returns the numeric
+      // value, producing garbage keys
+      validPositions = [CutPosition.Top, CutPosition.Bottom, CutPosition.Left, CutPosition.Right];
     }
     validPositions.forEach((key: CutPosition) => {
       if (key in cutPositions && cutPositions[key] !== undefined) {
@@ -597,7 +618,14 @@ export class Cuts {
 
     const value: { [key: string]: { [key: string]: number } } = {};
 
-    const cuts = Cuts.expandPositions(this.positions, true);
+    // A missing Right/Bottom cut defaults to the image dimensions: expanding
+    // with 0 would collapse the SVG rect (N3)
+    const cuts = {
+      Left: this.positions[CutPosition.Left] ?? 0,
+      Top: this.positions[CutPosition.Top] ?? 0,
+      Right: this.positions[CutPosition.Right] ?? this.width,
+      Bottom: this.positions[CutPosition.Bottom] ?? this.height
+    };
     if (this.positions !== undefined && Object.keys(cuts).length) {
       value.cuts = cuts;
     }
@@ -619,14 +647,36 @@ export class Cuts {
       rotation += ` rotate(${rotations.Right}, ${this.width}, ${Math.ceil(this.height / 2)})`;
     }
 
+    // The pattern offset is signed: a Left/Top offset (negative) must end up
+    // in the x/y attribute, expanding with 0 would lose it
+    const patternOffset = {
+      x: this.offsets[CutPosition.Right] ?? this.offsets[CutPosition.Left] ?? 0,
+      y: this.offsets[CutPosition.Bottom] ?? this.offsets[CutPosition.Top] ?? 0
+    };
+
     let svgPattern = `
-    <pattern id="pattern" width="${this.width}" height="${this.height}" x="${offsets.Right}" y="${offsets.Bottom}">
+    <pattern id="pattern" width="${this.width}" height="${this.height}" x="${patternOffset.x}" y="${patternOffset.y}">
       <clipPath id="cuts">
         <rect x="${cuts.Left}" y="${cuts.Top}" width="${cuts.Right - cuts.Left}" height="${cuts.Bottom - cuts.Top}" transform="${rotation}" />
       </clipPath>
     </pattern>`;
     svgPattern = svgPattern.replace(/\n|\r/g, "");
     json.body.value = svgPattern;
+    // The structured state rides along the SVG pattern (body.value stays the
+    // SVG for pattern consumers): a re-import restores the exact cuts,
+    // offsets and rotations instead of the lossy SVG approximation. Only the
+    // active (non-zero) offset and rotation entries are exported: zeros are
+    // meaningless there and would break the Left/Right and Top/Bottom
+    // exclusivity on re-import.
+    json.body.cuts = cuts;
+    const activeOffsets = Object.fromEntries(Object.entries(offsets).filter(([, value]) => value !== 0));
+    if (Object.keys(activeOffsets).length) {
+      json.body.offsets = activeOffsets;
+    }
+    const activeRotations = Object.fromEntries(Object.entries(rotations).filter(([, value]) => value !== 0));
+    if (Object.keys(activeRotations).length) {
+      json.body.rotations = activeRotations;
+    }
 
     return json;
   }
@@ -757,6 +807,18 @@ export class Cuts {
       if (Object.keys(rotations).length) {
         cutJson.rotations = rotations;
       }
+    }
+
+    // Structured state attached by toJSONLD: prefer it over the lossy
+    // SVG-derived approximation
+    if (typeof json.body.cuts === "object" && json.body.cuts !== null) {
+      cutJson.cuts = json.body.cuts;
+    }
+    if (typeof json.body.offsets === "object" && json.body.offsets !== null) {
+      cutJson.offsets = json.body.offsets;
+    }
+    if (typeof json.body.rotations === "object" && json.body.rotations !== null) {
+      cutJson.rotations = json.body.rotations;
     }
 
     this.loadJSON(cutJson);

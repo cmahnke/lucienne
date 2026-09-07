@@ -70,6 +70,8 @@ export class Renderer {
     this.viewerElement = this.element.querySelector(Renderer.rendererViewerSelector)!;
 
     this.viewer = this.setupViewer(this.viewerElement);
+    // Debug/testing handle: exposes the renderer for e2e diagnostics
+    (this.viewerElement as { osdRenderer?: Renderer }).osdRenderer = this;
 
     if (source !== undefined) {
       this.source = source;
@@ -520,6 +522,11 @@ export class Renderer {
     }
     referenceImage.setPosition(new OpenSeadragon.Point(0, 0), immediately);
     const transformedClipRect = referenceImage.imageToViewportRectangle(this.clipRect);
+    // Tiles that actually render (for the wedge detection) and tiles that are
+    // hidden (spare tiles, repositioned to fill wedges)
+    const placedRects: { x: number; y: number; width: number; height: number }[] = [];
+    const spareTiles: OpenSeadragon.TiledImage[] = [];
+    let hasOffsets = false;
 
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < columns; c++) {
@@ -534,18 +541,31 @@ export class Renderer {
           height = 0;
         const tiledImage: OpenSeadragon.TiledImage | undefined = this.viewer.world.getItemAt(pos);
 
-        //const hideRect = new RotateableRect(tiledImage.getContentSize().x, tiledImage.getContentSize().y, 0, 0, tiledImage.getRotation());
-        const hideRect = new HideRect(tiledImage);
+        let isHidden = false;
 
         //Sanity checks
         if (tiledImage === undefined || referenceImage === undefined || this.clipRect === undefined) {
           throw new Error("Required variables are not defined");
         }
 
+        // Operate completely on this tile group: start every layout from a
+        // defined state instead of accumulating whatever the previous layout
+        // left behind (a rotation, a clip the crop logic trimmed). Reusing
+        // the stale clip made unrotated tiles jump whenever anything
+        // triggered a relayout, e.g. rotating a tile.
+        tiledImage.setRotation(0, immediately);
+        tiledImage.setClip(RotateableRect.fromRect(this.clipRect));
+        // The hide rect is built after the rotation reset so it consistently
+        // uses rotation 0
+        const hideRect = new HideRect(tiledImage);
+
         //expectedSize = new OpenSeadragon.Rect(0, 0, transformedClipRect.width * visibleColumns, transformedClipRect.height * visibleRows);
         let offsetRect;
         if (this._offsets != undefined) {
           offsetRect = Renderer.createOffsetRect(this._offsets, tiledImage);
+          if (offsetRect !== undefined) {
+            hasOffsets = true;
+          }
         }
 
         //initial position
@@ -560,6 +580,7 @@ export class Renderer {
         if (margins) {
           if (c < marginWidth || c >= columns - marginWidth || r < marginWidth || r >= rows - marginWidth) {
             tiledImage.setClip(hideRect.clone());
+            isHidden = true;
           }
           column = c - marginWidth;
           row = r - marginWidth;
@@ -595,8 +616,6 @@ export class Renderer {
             columnEven = true;
           }
 
-          const clipRotationPoint = this.clipRect.getCenter();
-
           let rotation = NaN;
           //Bottom knob
           if (CutPosition.Right in this._rotations && this._rotations[CutPosition.Right] !== undefined && rowEven && !columnEven) {
@@ -621,350 +640,182 @@ export class Renderer {
           }
 
           if (!isNaN(rotation) && !HideRect.isHidden(tiledImage)) {
-            const initialClip = tiledImage.getClip();
-            const rotatedClip = tiledImage.getClip();
-            if (initialClip === null || rotatedClip === null) {
-              throw new Error("tiled image has no clip for rotation");
-            }
-
-            rotatedClip.rotate(rotation, clipRotationPoint);
-            //This is just a ugly hack
-            if (rotation == 0 || rotation == 180) {
-              tiledImage.setWidth(referenceImage.getBounds().width, true);
-            } else {
-              tiledImage.setHeight(referenceImage.getBounds().height, true);
-              const ratio = tiledImage._worldWidthCurrent / tiledImage.source.dimensions.x;
-
-              const clipCenterX = this.clipRect.x + this.clipRect.width / 2;
-              const clipCenterY = this.clipRect.y + this.clipRect.height / 2;
-              const imageCenterX = tiledImage.source.dimensions.x / 2;
-              const imageCenterY = tiledImage.source.dimensions.y / 2;
-              const imageMarginLeft = this.clipRect.x;
-              const imageMarginRight = tiledImage.source.dimensions.x - (this.clipRect.x + this.clipRect.width);
-              const imageMarginTop = this.clipRect.y;
-              const imageMarginBottom = tiledImage.source.dimensions.y - (this.clipRect.y + this.clipRect.height);
-              const topClip = clipCenterY - clipCenterX;
-
-              if (this.clipRect.height - this.clipRect.y > this.clipRect.width - this.clipRect.x) {
-                rotatedClip.y = rotatedClip.y / 2 + (this.clipRect.height - this.clipRect.y) / 2 - rotatedClip.width / 2;
-              }
-              //rotatedClip.height = Math.min(this.clipRect.width, rotatedClip.height - rotatedClip.y);
-              rotatedClip.height = this.clipRect.width;
-              //rotatedClip.width = Math.min(this.clipRect.width, this.clipRect.height - rotatedClip.y);
-              /*
-              if (this.clipRect.height - this.clipRect.y < this.clipRect.width) {
-                rotatedClip.width = this.clipRect.height;
-              }
-              */
-              //rotatedClip.width = Math.min(this.clipRect.width, this.clipRect.height - this.clipRect.y);
-
-              let rotatedMarginBottom;
-              let rotatedMarginTop;
-
-              //TODO: Check if this is still needed
-              if (rotation == 90) {
-                rotatedMarginBottom = tiledImage.source.dimensions.x - (this.clipRect.x + this.clipRect.width);
-                rotatedMarginTop = this.clipRect.x;
-              } else if (rotation == 270) {
-                rotatedMarginTop = tiledImage.source.dimensions.x - (this.clipRect.x + this.clipRect.width);
-                rotatedMarginBottom = this.clipRect.x;
-              }
-
-              console.log(
-                `Margins left ${imageMarginLeft} right ${imageMarginRight} top ${imageMarginTop} bottom ${imageMarginBottom} : ${imageMarginTop * 0.5 + imageMarginBottom * 0.5} `
-              );
-
-              //Working for changing X
-              //let rotationOffsetX = clipCenterY - imageCenterY - imageMarginLeft * 0.5 + imageMarginRight * 0.5;
-              //let rotationOffsetY = clipCenterX - imageCenterX - imageMarginTop * 0.5 + imageMarginBottom * 0.5;
-
-              //TODO: rotatedClip.y need to be accounted for as well
-
-              const rotationOffsetX = clipCenterY - imageCenterY - imageMarginLeft * 0.5 + imageMarginRight * 0.5 + imageMarginBottom;
-              let rotationOffsetY = clipCenterX - imageCenterX - imageMarginTop * 0.5 + imageMarginBottom * 0.5; // +
-
-              if (this.clipRect.height - this.clipRect.y < this.clipRect.width - this.clipRect.x) {
-                // hight is smaller then width, use hight to set max width of rotated tile
-                const correctionY = this.clipRect.width - this.clipRect.x - (this.clipRect.height - this.clipRect.y);
-                rotatedClip.width = this.clipRect.height - this.clipRect.y;
-                rotationOffsetY = rotationOffsetY - correctionY / 2;
-                console.log(
-                  `Less height (${this.clipRect.height - this.clipRect.y}) then width (${this.clipRect.width - this.clipRect.x}), using ${this.clipRect.height - this.clipRect.y}`
-                );
-              }
-
-              //imageMarginLeft * 0.5 + imageMarginRight * 0.5;
-              console.log(`offset Y ${rotationOffsetY} X ${rotationOffsetX}`);
-
-              x = x - ratio * rotationOffsetX;
-              y = y - ratio * rotationOffsetY;
-
-              console.log("Rotations", `${c},${r}`, `source width ${tiledImage.source.dimensions.x} clip width ${this.clipRect.width}`);
-
-              const offsetPoint = new OpenSeadragon.Point(
-                initialClip.width / 2 - rotatedClip.width / 2,
-                initialClip.height / 2 - rotatedClip.height / 2
-              );
-            }
-            //tiledImage.setClip(null);
+            // The tile's clip is already the cut region (set at the start of
+            // the layout) and stays untouched: rotating the tile rotates
+            // exactly that region. The previous logic rewrote the clip
+            // (rotating it again and forcing its dimensions), which showed
+            // the wrong source region whenever the cut region had margins
+            // inside the image.
             tiledImage.setRotationPoint(
               new OpenSeadragon.Rect(0, 0, tiledImage.getContentSize().x, tiledImage.getContentSize().y).getCenter()
             );
             tiledImage.setRotation(rotation, immediately);
-            tiledImage.setClip(rotatedClip);
+            // Position the tile so the rotated clip region stays exactly
+            // where the unrotated clip region was, relative to the tile's
+            // grid cell: OpenSeadragon rotates the content about the tile's
+            // world center, so the world center has to be shifted by the
+            // rotated offset between the clip center and the world center.
+            // The previous margin-based approximation misaligned rotated
+            // tiles whenever the cut region did not cover the whole image.
+            const contentScale = OffsetRect.viewportScale(tiledImage);
+            const contentSize = tiledImage.getContentSize();
+            const worldWidth = contentSize.x * contentScale;
+            const worldHeight = contentSize.y * contentScale;
+            const clipCenterX = (this.clipRect.x + this.clipRect.width / 2) * contentScale;
+            const clipCenterY = (this.clipRect.y + this.clipRect.height / 2) * contentScale;
+            if (rotation === 90) {
+              x += clipCenterX + clipCenterY - (worldWidth + worldHeight) / 2;
+              y += clipCenterY - clipCenterX + (worldWidth - worldHeight) / 2;
+            } else if (rotation === 180) {
+              x += 2 * clipCenterX - worldWidth;
+              y += 2 * clipCenterY - worldHeight;
+            } else if (rotation === 270) {
+              x += clipCenterX - clipCenterY - (worldWidth - worldHeight) / 2;
+              y += clipCenterY + clipCenterX - (worldWidth + worldHeight) / 2;
+            }
           }
         }
 
         if (offsetRect !== undefined) {
-          //Vertical shifts
-          if (offsetRect.height > 0) {
-            const shift = offsetRect.calculateY(referenceImage) * column;
-            y = y + shift;
-          } else if (offsetRect.height < 0) {
-            const shift = offsetRect.calculateY(referenceImage) * column;
-            y = y - shift;
+          // The cut region is the repeat unit of the pattern: shifting a
+          // row/column by whole periods does not change the rendered pattern,
+          // but raw accumulated shifts (offset * row/column) grow with the
+          // grid size and make the composite (and with it the viewer zoom)
+          // "breathe". Normalize the shifts into [0, period): wrapping
+          // translates the strip by exactly one period, which is invisible
+          // for a periodic pattern - wrapping at half periods (signed) would
+          // make the tiles visibly jump while dragging.
+          const stripShift: (offset: number, index: number, period: number) => number = (offset, index, period) => {
+            // floorMod of the accumulated magnitude: a wrap translates the
+            // strip by exactly one period, which is invisible for a periodic
+            // pattern
+            const magnitude = Math.abs(offset) * index;
+            return magnitude - period * Math.floor(magnitude / period);
+          };
+          // Ring tiles adjacent to the visible area take the strip phase of
+          // the neighboring visible row/column: with their own index they
+          // would be shifted out of phase and could not fill the wedges the
+          // shifted strips leave at the crop boundary
+          let shiftRow = row;
+          let shiftColumn = column;
+          if (margins) {
+            if (row == -1) {
+              shiftRow = 0;
+            } else if (row == visibleRows) {
+              shiftRow = visibleRows - 1;
+            }
+            if (column == -1) {
+              shiftColumn = 0;
+            } else if (column == visibleColumns) {
+              shiftColumn = visibleColumns - 1;
+            }
           }
-          //Vertical overlaps
-          if (column == 0 && offsetRect.width < 0) {
-            const borderClip = tiledImage.getClip()!.clone();
-            const imageCoordShift = offsetRect.width * row * -1;
-            borderClip.width = borderClip.width - imageCoordShift;
-            borderClip.x = borderClip.x + imageCoordShift;
-            tiledImage.setClip(borderClip);
-          }
-          if (column == visibleColumns - 1 && offsetRect.width > 0) {
-            const borderClip = tiledImage.getClip()!.clone();
-            const imageCoordShift = offsetRect.width * row;
-            borderClip.width = borderClip.width - imageCoordShift;
-            tiledImage.setClip(borderClip);
+          // Vertical shifts
+          if (offsetRect.height != 0) {
+            const shift = stripShift(offsetRect.calculateY(referenceImage), shiftColumn, transformedClipRect.height);
+            // When both offsets are active the vertical stagger direction
+            // follows the horizontal one: opposing working directions would
+            // leave uncovered wedges at the strip intersections
+            const positive = offsetRect.width != 0 ? offsetRect.width > 0 : offsetRect.height > 0;
+            y = positive ? y + shift : y - shift;
           }
           // Horizontal shifts
-          if (offsetRect.width > 0) {
-            const shift = offsetRect.calculateX(referenceImage) * row;
-            x = x + shift;
-          } else if (offsetRect.width < 0) {
-            const shift = offsetRect.calculateX(referenceImage) * row;
-            x = x - shift;
+          if (offsetRect.width != 0) {
+            const shift = stripShift(offsetRect.calculateX(referenceImage), shiftRow, transformedClipRect.width);
+            x = offsetRect.width > 0 ? x + shift : x - shift;
           }
-          // Horizontal overlaps
-          if (row == 0 && offsetRect.height < 0) {
-            //column > 0 &&
-            const borderClip = tiledImage.getClip()!.clone();
-            const imageCoordShift = offsetRect.height * column * -1;
-            borderClip.height = borderClip.height - imageCoordShift;
-            borderClip.y = borderClip.y + imageCoordShift;
-            tiledImage.setClip(borderClip);
-          }
-          if (row == visibleRows - 1 && offsetRect.height > 0) {
-            const borderClip = tiledImage.getClip()!.clone();
-            const imageCoordShift = offsetRect.height * column;
-            borderClip.height = borderClip.height - imageCoordShift;
-            tiledImage.setClip(borderClip);
-          }
-
-          const imageCoordShiftX = offsetRect.width * row;
-          const imageCoordShiftY = offsetRect.height * column;
-
-          const checkModifiedClip: (tiledImage: OpenSeadragon.TiledImage) => OpenSeadragon.Rect | RotateableRect | HideRect = (
-            tiledImage: OpenSeadragon.TiledImage
-          ) => {
-            if (
-              HideRect.isHidden(tiledImage)
-              // tiledImage.getClip() !== null &&
-              // tiledImage.getContentSize().x == tiledImage.getClip()!.x &&
-              // tiledImage.getContentSize().y == tiledImage.getClip()!.y &&
-              // this.clipRect !== undefined
-            ) {
-              return this.clipRect!.clone();
-            } else {
-              return tiledImage.getClip()! as RotateableRect;
-            }
-          };
-
-          const marginPos: (curPos: number, dimension: number) => number = (curPos, dimension) => {
-            if (curPos < marginWidth) {
-              return marginWidth - curPos;
-            } else if (curPos >= dimension + marginWidth) {
-              return curPos - (marginWidth + dimension) + 1;
-            }
-            return NaN;
-          };
-
-          /*
-          const generateArray: (num: number) => number[] = (num: number) => {
-            if (typeof num !== "number" || !Number.isInteger(num) || num <= 0) {
-              return [];
-            }
-            const result: number[] = [];
-            for (let i = num; i >= 1; i--) {
-              result.push(i);
-            }
-            return result;
-          };
-          */
-
-          if (margins && (c < marginWidth || c >= columns - marginWidth || r < marginWidth || r >= rows - marginWidth)) {
-            if (c < marginWidth && offsetRect.width > 0) {
-              // Bottom slider right
-              const borderClip = checkModifiedClip(tiledImage);
-
-              //shift in current tile
-              if (
-                marginPos(c, visibleColumns) * this.clipRect.width > imageCoordShiftX &&
-                (marginPos(c, visibleColumns) - 1) * this.clipRect.width < imageCoordShiftX
-              ) {
-                borderClip.x = borderClip.width + (marginPos(c, visibleColumns) - 1) * borderClip.width - imageCoordShiftX;
-                borderClip.width = borderClip.width - (marginPos(c, visibleColumns) - 1) * borderClip.width + imageCoordShiftX;
-                // shift smaller the current tile
-              } else if (marginPos(c, visibleColumns) * this.clipRect.width > imageCoordShiftX) {
-                borderClip.width = hideRect.width;
-                borderClip.x = hideRect.x;
-                //shift larger
-              } else {
-                borderClip.width = this.clipRect.width;
-                borderClip.x = this.clipRect.x;
-              }
-              tiledImage.setClip(borderClip);
-            }
-
-            if (c >= columns - marginWidth && offsetRect.width < 0) {
-              // Bottom slider left
-              const borderClip = checkModifiedClip(tiledImage);
-
-              //shift in current tile
-              if (
-                marginPos(c, visibleColumns) * this.clipRect.width > imageCoordShiftX * -1 &&
-                (marginPos(c, visibleColumns) - 1) * this.clipRect.width < imageCoordShiftX * -1
-              ) {
-                borderClip.width = (imageCoordShiftX + (marginPos(c, visibleColumns) - 1) * borderClip.width) * -1;
-                // shift smaller the current tile
-              } else if (marginPos(c, visibleColumns) * this.clipRect.width > imageCoordShiftX * -1) {
-                borderClip.width = hideRect.width;
-                //shift larger
-              } else {
-                borderClip.width = this.clipRect.width;
-              }
-              tiledImage.setClip(borderClip);
-            }
-
-            if (r < marginWidth && offsetRect.height > 0) {
-              //right slider down
-              const borderClip = checkModifiedClip(tiledImage);
-
-              //shift in current tile
-              if (
-                marginPos(r, visibleRows) * this.clipRect.height > imageCoordShiftY &&
-                (marginPos(r, visibleRows) - 1) * this.clipRect.height < imageCoordShiftY
-              ) {
-                //borderClip.y = borderClip.height + (marginPos(r, visibleRows) - 1) * borderClip.height - imageCoordShiftY;
-                borderClip.y = borderClip.height + (marginPos(r, visibleRows) - 1) * borderClip.height - imageCoordShiftY;
-                borderClip.height = borderClip.height - (marginPos(r, visibleRows) - 1) * borderClip.height + imageCoordShiftY;
-                // shift smaller the current tile
-              } else if (marginPos(r, visibleRows) * this.clipRect.height > imageCoordShiftY) {
-                borderClip.height = hideRect.height;
-                borderClip.y = hideRect.y;
-                //shift larger
-              } else {
-                borderClip.height = this.clipRect.height;
-                borderClip.y = this.clipRect.y;
-              }
-
-              tiledImage.setClip(borderClip);
-            }
-
-            if (r >= rows - marginWidth && offsetRect.height < 0) {
-              //right slider up
-              const borderClip = checkModifiedClip(tiledImage);
-
-              //shift in current tile
-              if (
-                marginPos(r, visibleRows) * this.clipRect.height > imageCoordShiftY * -1 &&
-                (marginPos(r, visibleRows) - 1) * this.clipRect.height < imageCoordShiftY * -1
-              ) {
-                borderClip.height = (imageCoordShiftY + (marginPos(r, visibleRows) - 1) * borderClip.height) * -1;
-                // shift smaller the current tile
-              } else if (marginPos(r, visibleRows) * this.clipRect.height > imageCoordShiftY * -1) {
-                borderClip.height = hideRect.height;
-                //shift larger
-              } else {
-                borderClip.height = this.clipRect.height;
-              }
-
-              tiledImage.setClip(borderClip);
-            }
-
-            //Fix clippins at the edges, each for offest postions
-            if ((r < marginWidth || r >= rows - marginWidth) && offsetRect.width != 0 && offsetRect.height == 0) {
-              const borderClip = checkModifiedClip(tiledImage);
-              borderClip.y = borderClip.height + (marginPos(r, visibleRows) - 1) * borderClip.height - imageCoordShiftY;
-              tiledImage.setClip(borderClip);
-            } else if ((c < marginWidth || c >= columns - marginWidth) && offsetRect.height != 0 && offsetRect.width == 0) {
-              const borderClip = checkModifiedClip(tiledImage);
-              borderClip.x = borderClip.width + (marginPos(c, visibleColumns) - 1) * borderClip.width - imageCoordShiftX;
-              tiledImage.setClip(borderClip);
-            }
-
-            //TODO: Finish this
-            if (offsetRect.width != 0 && offsetRect.height != 0) {
-              //TODO Fix issues at the edges when using both offset directions
-              if ((c < marginWidth || c >= columns - marginWidth) && (r < marginWidth || r >= rows - marginWidth)) {
-                const borderClip = checkModifiedClip(tiledImage);
-                /*
-                borderClip.x = this.clipRect.x
-                borderClip.y = this.clipRect.y
-                borderClip.width
-                borderClip.height
-                */
-                borderClip.y = borderClip.height + (marginPos(r, visibleRows) - 1) * borderClip.height - imageCoordShiftY;
-                borderClip.x = borderClip.width + (marginPos(c, visibleColumns) - 1) * borderClip.width - imageCoordShiftX;
-
-                borderClip.width = (imageCoordShiftX + (marginPos(c, visibleColumns) - 1) * borderClip.width) * -1;
-                borderClip.height = borderClip.height - (marginPos(r, visibleRows) - 1) * borderClip.height + imageCoordShiftY;
-
-                tiledImage.setClip(borderClip);
-              }
-            }
-
-            //tiledImage.setClip(borderClip);
-          }
-
-          // TODO: Inset clipping not working with cuts yet, if inset can cover more then one tile
-          const shiftTilesX = Math.ceil(
-            ((marginWidth + visibleColumns) * offsetRect.width * Math.sign(offsetRect.width)) / this.clipRect.width
-          );
-          if (shiftTilesX > marginWidth && (c == columns - shiftTilesX - 1 || c == shiftTilesX)) {
-            if (c == shiftTilesX && imageCoordShiftX * -1 > this.clipRect.width) {
-              const borderClip = checkModifiedClip(tiledImage);
-              borderClip.width = borderClip.width - (this.clipRect.width + imageCoordShiftX) * -1;
-              borderClip.x = borderClip.x + (this.clipRect.width + imageCoordShiftX) * -1;
-              tiledImage.setClip(borderClip);
-            }
-            if (c == columns - shiftTilesX - 1 && imageCoordShiftX > this.clipRect.width) {
-              const borderClip = checkModifiedClip(tiledImage);
-              borderClip.width = this.clipRect.width - (imageCoordShiftX - this.clipRect.width);
-              tiledImage.setClip(borderClip);
+          if (margins) {
+            // With offsets every row/column strip stays contiguous (all its
+            // tiles share the same normalized shift), but the strips no
+            // longer align with the crop rectangle at the boundaries. The
+            // margin ring adjacent to the visible area therefore renders
+            // unclipped: it continues the pattern seamlessly, fills the
+            // wedges the shifted strips leave at the crop boundary and keeps
+            // the composite connected. Deeper rings stay hidden.
+            const adjacentX = column == -1 || column == visibleColumns;
+            const adjacentY = row == -1 || row == visibleRows;
+            if (adjacentX || adjacentY) {
+              tiledImage.setClip(RotateableRect.fromRect(this.clipRect));
+              isHidden = false;
             }
           }
-
-          const shiftTilesY = Math.ceil(
-            ((marginWidth + visibleRows) * offsetRect.height * Math.sign(offsetRect.height)) / this.clipRect.height
-          );
-          if (shiftTilesY > marginWidth && (r == rows - shiftTilesY - 1 || r == shiftTilesY)) {
-            if (r == shiftTilesY && imageCoordShiftY * -1 > this.clipRect.height) {
-              const borderClip = checkModifiedClip(tiledImage);
-              borderClip.height = borderClip.height - (this.clipRect.height + imageCoordShiftY) * -1;
-              borderClip.y = borderClip.y + (this.clipRect.height + imageCoordShiftY) * -1;
-              tiledImage.setClip(borderClip);
-            } else if (r == rows - shiftTilesY - 1 && imageCoordShiftY > this.clipRect.height) {
-              const borderClip = checkModifiedClip(tiledImage);
-              borderClip.height = this.clipRect.height - (imageCoordShiftY - this.clipRect.height);
-              tiledImage.setClip(borderClip);
-            }
-          }
-          //console.log(`${c},${r}`, generateArray(shiftTilesX - marginWidth), generateArray(shiftTilesY - marginWidth));
         }
 
+        // Apply the computed position first: the crop logic below measures
+        // the tile's actually drawn (clipped) bounds, which depend on the
+        // position just set - measuring before positioning would read the
+        // world's arrange() placement instead.
         tiledImage.setPosition(new OpenSeadragon.Point(x, y), immediately);
+
+        // Clip every tile back to the configured dimensions: the offsets only
+        // change the alignment of the strips, the overall shape of the
+        // composite must stay the configured columns x rows rectangle.
+        // Overlapping parts beyond the crop are clipped away, the parts of
+        // the adjacent margin ring inside the crop keep filling the wedges at
+        // the boundary. The overflow is measured on the actually drawn
+        // (clipped) bounds, which for rotated tiles are the rotated clip
+        // region rather than the tile's world rectangle.
+        const cropWidth = visibleColumns * transformedClipRect.width;
+        const cropHeight = visibleRows * transformedClipRect.height;
+        const drawn = tiledImage.getClippedBounds();
+        const visibleX0 = Math.max(drawn.x, 0);
+        const visibleX1 = Math.min(drawn.x + drawn.width, cropWidth);
+        const visibleY0 = Math.max(drawn.y, 0);
+        const visibleY1 = Math.min(drawn.y + drawn.height, cropHeight);
+        if (visibleX1 <= visibleX0 || visibleY1 <= visibleY0) {
+          // entirely outside the configured area
+          tiledImage.setClip(hideRect.clone());
+          isHidden = true;
+        } else if (drawn.x < 0 || drawn.y < 0 || drawn.x + drawn.width > cropWidth || drawn.y + drawn.height > cropHeight) {
+          const borderClip = tiledImage.getClip()?.clone() ?? RotateableRect.fromRect(this.clipRect);
+          // Trim the clip sides that correspond to the overflowing viewport
+          // sides. The drawn region is the clip region rotated by the tile's
+          // rotation (clockwise): for a tile rotated by 90 degrees the
+          // viewport x axis corresponds to the clip's y axis (and vice
+          // versa) and for 180 degrees the axes flip - trimming the wrong
+          // sides let rotated tiles stick out of the configured area or lose
+          // content at the wrong edge.
+          const rotation = (((Math.round(tiledImage.getRotation() / 90) * 90) % 360) + 360) % 360;
+          const imagePerViewport = 1 / OffsetRect.viewportScale(tiledImage);
+          const overflowRight = Math.max(0, drawn.x + drawn.width - cropWidth);
+          const overflowLeft = Math.max(0, -drawn.x);
+          const overflowBottom = Math.max(0, drawn.y + drawn.height - cropHeight);
+          const overflowTop = Math.max(0, -drawn.y);
+          const sides: Record<number, { right: string; left: string; bottom: string; top: string }> = {
+            0: { right: "end-x", left: "start-x", bottom: "end-y", top: "start-y" },
+            90: { right: "start-y", left: "end-y", bottom: "end-x", top: "start-x" },
+            180: { right: "start-x", left: "end-x", bottom: "start-y", top: "end-y" },
+            270: { right: "end-y", left: "start-y", bottom: "start-x", top: "end-x" }
+          };
+          const trim = (edge: string, overflow: number) => {
+            if (overflow <= 0) {
+              return;
+            }
+            const amount = overflow * imagePerViewport;
+            if (edge === "end-x") {
+              borderClip.width -= amount;
+            } else if (edge === "start-x") {
+              borderClip.x += amount;
+              borderClip.width -= amount;
+            } else if (edge === "end-y") {
+              borderClip.height -= amount;
+            } else {
+              borderClip.y += amount;
+              borderClip.height -= amount;
+            }
+          };
+          const sideMap = sides[rotation] ?? sides[0];
+          trim(sideMap.right, overflowRight);
+          trim(sideMap.left, overflowLeft);
+          trim(sideMap.bottom, overflowBottom);
+          trim(sideMap.top, overflowTop);
+          tiledImage.setClip(borderClip);
+        }
+        if (isHidden) {
+          spareTiles.push(tiledImage);
+        } else {
+          placedRects.push({ x: drawn.x, y: drawn.y, width: drawn.width, height: drawn.height });
+        }
         //console.log("final rotation point", `${c}, ${r}`, tiledImage._getRotationPoint(true), tiledImage.getBounds());
 
         let debugText = `${c}, ${r} (${column}, ${row})`;
@@ -972,6 +823,124 @@ export class Renderer {
           debugText = "Reference " + debugText;
         }
         this.debugOverlay(debugText, tiledImage, true);
+      }
+    }
+
+    // Fill the wedges that both offsets leave at their stagger intersections:
+    // scan the configured area in quarter-tile steps for cells that the drawn
+    // tiles do not fully cover and position a spare (previously hidden) tile
+    // on every uncovered cell, clipped to exactly that area with the matching
+    // source phase. Coverage is measured exactly: every drawn rectangle is
+    // subtracted from the cell, and only cells with nothing left over count
+    // as covered - cells jointly covered by neighbouring tiles of the same
+    // strip (whose content is continuous) stay untouched, while cells with
+    // genuine gaps get filled. The pattern is periodic, so the blob's clip
+    // region is the cut region translated by the blob's position modulo the
+    // period.
+    if (hasOffsets && spareTiles.length > 0) {
+      const stepX = transformedClipRect.width / 4;
+      const stepY = transformedClipRect.height / 4;
+      const ratioX = this.clipRect!.width / transformedClipRect.width;
+      const ratioY = this.clipRect!.height / transformedClipRect.height;
+      const cropWidth = visibleColumns * transformedClipRect.width;
+      const cropHeight = visibleRows * transformedClipRect.height;
+      const covers = (px: number, py: number, w: number, h: number) => {
+        let remainder: { x: number; y: number; width: number; height: number }[] = [{ x: px, y: py, width: w, height: h }];
+        for (const rect of placedRects) {
+          if (remainder.length === 0) {
+            break;
+          }
+          const next: { x: number; y: number; width: number; height: number }[] = [];
+          for (const r of remainder) {
+            const ix0 = Math.max(r.x, rect.x);
+            const iy0 = Math.max(r.y, rect.y);
+            const ix1 = Math.min(r.x + r.width, rect.x + rect.width);
+            const iy1 = Math.min(r.y + r.height, rect.y + rect.height);
+            if (ix1 <= ix0 || iy1 <= iy0) {
+              next.push(r);
+              continue;
+            }
+            if (r.x < ix0) {
+              next.push({ x: r.x, y: r.y, width: ix0 - r.x, height: r.height });
+            }
+            if (ix1 < r.x + r.width) {
+              next.push({ x: ix1, y: r.y, width: r.x + r.width - ix1, height: r.height });
+            }
+            if (r.y < iy0) {
+              next.push({ x: ix0, y: r.y, width: ix1 - ix0, height: iy0 - r.y });
+            }
+            if (iy1 < r.y + r.height) {
+              next.push({ x: ix0, y: iy1, width: ix1 - ix0, height: r.y + r.height - iy1 });
+            }
+          }
+          remainder = next;
+        }
+        return remainder.length === 0;
+      };
+      const scanColumns = Math.ceil(cropWidth / stepX);
+      const scanRows = Math.ceil(cropHeight / stepY);
+      const uncovered = new Map<string, { gx: number; gy: number }>();
+      for (let gy = 0; gy < scanRows; gy++) {
+        for (let gx = 0; gx < scanColumns; gx++) {
+          const px = gx * stepX;
+          const py = gy * stepY;
+          const w = Math.min(stepX, cropWidth - px);
+          const h = Math.min(stepY, cropHeight - py);
+          if (!covers(px, py, w, h)) {
+            uncovered.set(`${gx},${gy}`, { gx, gy });
+          }
+        }
+      }
+      const crossesPeriod = (px: number, py: number, w: number, h: number) =>
+        Math.floor(px / transformedClipRect.width) !== Math.floor((px + w - 0.001) / transformedClipRect.width) ||
+        Math.floor(py / transformedClipRect.height) !== Math.floor((py + h - 0.001) / transformedClipRect.height);
+      while (uncovered.size > 0 && spareTiles.length > 0) {
+        const first = uncovered.values().next().value!;
+        let x0 = first.gx;
+        let y0 = first.gy;
+        let x1 = first.gx;
+        let y1 = first.gy;
+        uncovered.delete(`${x0},${y0}`);
+        let grew = true;
+        while (grew) {
+          grew = false;
+          for (const cell of uncovered.values()) {
+            const nx0 = Math.min(x0, cell.gx);
+            const ny0 = Math.min(y0, cell.gy);
+            const nx1 = Math.max(x1, cell.gx);
+            const ny1 = Math.max(y1, cell.gy);
+            const px = nx0 * stepX;
+            const py = ny0 * stepY;
+            const w = Math.min((nx1 - nx0 + 1) * stepX, cropWidth - px);
+            const h = Math.min((ny1 - ny0 + 1) * stepY, cropHeight - py);
+            if (!crossesPeriod(px, py, w, h)) {
+              x0 = nx0;
+              y0 = ny0;
+              x1 = nx1;
+              y1 = ny1;
+              uncovered.delete(`${cell.gx},${cell.gy}`);
+              grew = true;
+            }
+          }
+        }
+        const spare = spareTiles.pop();
+        if (spare === undefined) {
+          break;
+        }
+        const px = x0 * stepX;
+        const py = y0 * stepY;
+        const w = Math.min((x1 - x0 + 1) * stepX, cropWidth - px);
+        const h = Math.min((y1 - y0 + 1) * stepY, cropHeight - py);
+        // A tile draws its clip region offset from its world origin: to land
+        // the drawn region exactly on the blob while showing the source
+        // phase of the blob's position, the origin must sit at the
+        // period-aligned window start and the clip must carry the phase
+        const phaseX = px % transformedClipRect.width;
+        const phaseY = py % transformedClipRect.height;
+        spare.setPosition(new OpenSeadragon.Point(px - phaseX, py - phaseY), immediately);
+        spare.setClip(
+          new OpenSeadragon.Rect(this.clipRect!.x + phaseX * ratioX, this.clipRect!.y + phaseY * ratioY, w * ratioX, h * ratioY)
+        );
       }
     }
 
@@ -1193,79 +1162,38 @@ export class Renderer {
     }
 
     renderer.source = this._source;
-    const numTiles = childViewer.world.getItemCount();
 
     return new Promise<OpenSeadragon.Viewer>((resolve, reject) => {
-      let layoutFinished = false;
-      //let updateViewportFired = false;
-      let tilesDrawn = 0;
-      let fullWidthFired = false;
-
-      const checkReady = () => {
-        if (layoutFinished && tilesDrawn >= numTiles && fullWidthFired) {
-          try {
-            resolve(childViewer);
-            clearTimeout(timer);
-            //remove handlers
-            if (tileDrawnHandler) childViewer.removeHandler("tile-drawn", tileDrawnHandler);
-            if (layoutFinishHandler) childViewer.removeHandler("layout-finish", layoutFinishHandler);
-            if (fullWidthHandler) childViewer.removeHandler("full-width", fullWidthHandler);
-          } catch (error) {
-            reject(error);
-            clearTimeout(timer);
-            if (tileDrawnHandler) childViewer.removeHandler("tile-drawn", tileDrawnHandler);
-            if (layoutFinishHandler) childViewer.removeHandler("layout-finish", layoutFinishHandler);
-            if (fullWidthHandler) childViewer.removeHandler("full-width", fullWidthHandler);
-          }
-        }
-      };
-
-      const tileDrawnHandler: OpenSeadragon.EventHandler<OpenSeadragon.ViewerEvent> = () => {
-        //event: OpenSeadragon.ViewerEvent
-        //console.log(`tile-drawn event fired ${tilesDrawn}`, event);
-        tilesDrawn++;
-        checkReady();
-      };
-
-      const layoutFinishHandler: () => void = () => {
-        //console.log("layout-finish event fired");
-        layoutFinished = true;
-        childViewer.addOnceHandler("full-width", fullWidthHandler);
-        Renderer.fitToWidth(childViewer, true, undefined, true);
-        checkReady();
-      };
-
-      const fullWidthHandler: OpenSeadragon.EventHandler<OpenSeadragon.ViewerEvent> = () => {
-        //event: OpenSeadragon.ViewerEvent
-        //console.log("full-width event fired", event);
-        fullWidthFired = true;
-        checkReady();
-      };
-
-      childViewer.addHandler("tile-drawn", tileDrawnHandler);
-
-      const updateViewportHandler: OpenSeadragon.EventHandler<OpenSeadragon.ViewerEvent> = () => {
-        //event: OpenSeadragon.ViewerEvent
-        //console.log("update viewport event fired", event);
-        //updateViewportFired = true;
-      };
-      childViewer.addHandler("update-viewport", updateViewportHandler);
-
       const waitForTiles = () => {
-        if (tilesDrawn >= numTiles) {
-          childViewer.removeHandler("tile-drawn", waitForTiles);
-          childViewer.addOnceHandler("layout-finish", layoutFinishHandler);
-          renderer.notify([clip, offsets, rotations] as CutNotification, true);
+        childViewer.removeHandler("tile-drawn", waitForTiles);
+        // Apply the layout and the final viewport zoom BEFORE the canvas is
+        // captured. Previously the readiness was checked against a tile
+        // count read while the world was still empty, the promise resolved
+        // immediately and the canvas was captured in a mixed-zoom state.
+        renderer.notify([clip, offsets, rotations] as CutNotification, true);
+        // Fit the child viewport to the visible grid only: the download must
+        // contain exactly the configured columns x rows of the cut area, not
+        // the margin context rendered around it
+        const gridReference = childViewer.world.getItemAt(renderer._marginWidth * renderer._columns + renderer._marginWidth);
+        if (gridReference !== undefined) {
+          const tileBounds = gridReference.getBounds();
+          const gridRect = new OpenSeadragon.Rect(0, 0, tileBounds.width * renderer.columns, tileBounds.height * renderer.rows);
+          childViewer.viewport.fitBounds(gridRect, true);
         }
+        // Redraw everything at the final zoom and let the drawing complete
+        // before the canvas is captured
+        childViewer.forceRedraw();
+        setTimeout(() => {
+          clearTimeout(timer);
+          resolve(childViewer);
+        }, 600);
       };
       childViewer.addHandler("tile-drawn", waitForTiles);
 
       const timer = setTimeout(() => {
         const errMsg = i18next.t("renderer:renderTimeout");
         reject(new Error(`${errMsg} ${this.renderTimeout}ms`));
-        if (tileDrawnHandler) childViewer.removeHandler("tile-drawn", tileDrawnHandler);
-        if (layoutFinishHandler) childViewer.removeHandler("layout-finish", layoutFinishHandler);
-        if (fullWidthHandler) childViewer.removeHandler("full-width", fullWidthHandler);
+        childViewer.removeHandler("tile-drawn", waitForTiles);
       }, this.renderTimeout);
     });
   }

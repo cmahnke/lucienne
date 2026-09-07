@@ -9,5 +9,6 @@
     "@fontsource-variable/raleway",
     "postcss-scss",
     "better-docs"
-  ]
+  ],
+  "ignoreBinaries": ["eslint.config.mjs", "jsdoc.config.json"]
 }

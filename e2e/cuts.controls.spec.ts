@@ -20,8 +20,9 @@ test.describe("cut controls", () => {
     expect(json.body.type).toBe("Dataset");
     expect(json.target.source).toBe("https://iiif.test/image/info.json");
     expect(json.target.selector.value).toBe("xywh=0,0,512,512");
-    // Without cuts the clip rect covers nothing yet
-    expect(json.body.value).toContain('<rect x="0" y="0" width="0" height="0"');
+    // Without cuts the clip rect covers the full image (Right/Bottom default
+    // to the image dimensions)
+    expect(json.body.value).toContain('<rect x="0" y="0" width="512" height="512"');
   });
 
   test("vertical cut slider updates the top and bottom cuts", async ({ page }) => {
@@ -32,7 +33,8 @@ test.describe("cut controls", () => {
     await cutY.locator("#slider-max").fill("400");
 
     const json = (await downloadCutJson(page)) as unknown as CutJSONLD;
-    // The SVG clip rect spans from the top to the bottom cut
+    // The SVG clip rect spans from the top cut to the explicitly set bottom
+    // cut (only an UNSET bottom would default to the image height)
     expect(json.body.value).toContain('y="100"');
     expect(json.body.value).toContain('height="300"');
     expect(json.target.selector.value).toBe("xywh=0,0,512,512");

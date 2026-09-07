@@ -38,16 +38,32 @@ export class OffsetRect extends OpenSeadragon.Rect {
     return this._vertical;
   }
 
+  static viewportScale(tile: OpenSeadragon.TiledImage): number {
+    // The tile's uniform image-to-viewport scale, rotation-independent: for
+    // 90/270 degree rotated tiles the world width corresponds to the content
+    // height instead of the content width
+    const rotation = ((tile.getRotation() % 360) + 360) % 360;
+    const content = tile.getContentSize();
+    const bounds = tile.getBounds();
+    const imageWidth = rotation % 180 === 0 ? content.x : content.y;
+    return bounds.width / imageWidth;
+  }
+
   calculateX(reference?: OpenSeadragon.TiledImage): number {
     if (reference === undefined && this.reference !== undefined) {
       reference = this.reference;
     }
     if (reference !== undefined) {
-      const width = this.reference.imageToViewportRectangle(this).width;
+      // Deliberately not using imageToViewportRectangle here: it bakes the
+      // tile rotation into the rectangle (OpenSeadragon normalizes rotated
+      // rectangles by swapping width and height), which made the offset
+      // magnitude collapse to 0 for 90/270 degree rotated tiles - the
+      // strips they belong to shifted while these tiles stayed behind.
+      const scale = OffsetRect.viewportScale(reference);
       if (this.horizontal !== undefined && this.horizontal == CutPosition.Left) {
-        return -1 * width;
+        return -1 * this.width * scale;
       }
-      return width;
+      return this.width * scale;
     }
     return 0;
   }
@@ -57,11 +73,12 @@ export class OffsetRect extends OpenSeadragon.Rect {
       reference = this.reference;
     }
     if (reference !== undefined) {
-      const height = this.reference.imageToViewportRectangle(this).height;
+      // See calculateX for why the scale is computed manually
+      const scale = OffsetRect.viewportScale(reference);
       if (this.vertical !== undefined && this.vertical == CutPosition.Top) {
-        return -1 * height;
+        return -1 * this.height * scale;
       }
-      return height;
+      return this.height * scale;
     }
     return 0;
   }

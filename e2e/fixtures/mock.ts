@@ -1,5 +1,5 @@
 import type { Page, Route } from "@playwright/test";
-import { createTestTile } from "./png.mjs";
+import { createPatternedTile, createTestTile } from "./png.mjs";
 
 export const COLLECTION_URL = "https://vorsatzpapier.projektemacher.org/patterns/collection.json";
 export const IMAGE_SERVICE = "https://iiif.test/image";
@@ -33,8 +33,14 @@ export async function mockIIIF(page: Page) {
   await page.route("https://iiif.test/manifest-*.json", (route) => fixture(route, "e2e/fixtures/manifest.json"));
   // IIIF tiles (lowest specificity of the concrete mocks, must be registered
   // before the exact info.json route below - Playwright gives precedence to
-  // the most recently registered route)
-  await page.route(`${IMAGE_SERVICE}/**`, (route) => route.fulfill({ status: 200, contentType: "image/png", body: tile }));
+  // the most recently registered route). With ?patterned=1 an asymmetric
+  // pattern is served instead of a solid color, making offsets and cuts
+  // visually verifiable
+  await page.route(`${IMAGE_SERVICE}/**`, (route) => {
+    const patterned = new URL(page.url()).searchParams.get("patterned") === "1";
+    const body = patterned ? createPatternedTile() : tile;
+    return route.fulfill({ status: 200, contentType: "image/png", body });
+  });
   // IIIF image service: the bare service URL answers 404 (like real image
   // servers), the app then retries with the /info.json suffix
   await page.route(IMAGE_SERVICE_URL, (route) => fixture(route, "e2e/fixtures/info.json"));

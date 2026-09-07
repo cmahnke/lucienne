@@ -19,7 +19,9 @@ i18next.use(LanguageDetector).init({
   debug: false,
   fallbackLng: "en",
   resources: translations,
-  supportedLngs: ["en", "de"]
+  supportedLngs: ["en", "de"],
+  // Regional locales like "de-DE" must resolve to the "de" resources
+  load: "languageOnly"
 });
 
 const appName = "lucienne";
@@ -142,6 +144,10 @@ export class CuttingTable {
       download = element.dataset.download === "true";
     }
     this._download = download;
+    // Enable offset (shift) controls?
+    if ("shifts" in element.dataset && element.dataset.shifts !== undefined && element.dataset.shifts !== "") {
+      shifts = element.dataset.shifts === "true";
+    }
     this._autoLoad = autoLoad;
     this._shifts = shifts;
 
@@ -579,6 +585,7 @@ export class CuttingTable {
       <div class="input-area">
         <div class="source-select">
           ${urlInput}
+          <i class="controls button help-button" title="${i18next.t("help:open")}"></i>
           <div class="select-container"></div>
           <div class="status-container"></div>
         </div>
@@ -596,6 +603,21 @@ export class CuttingTable {
           <input type="checkbox" class="control box rulers" checked />
         </div>
       </div>
+      <dialog class="help-dialog">
+        <h2>${i18next.t("help:title")}</h2>
+        <ul class="help-list">
+          <li>${i18next.t("help:grid")}</li>
+          <li>${i18next.t("help:cuts")}</li>
+          <li>${i18next.t("help:offsets")}</li>
+          <li>${i18next.t("help:rotations")}</li>
+          <li>${i18next.t("help:rulers")}</li>
+          <li>${i18next.t("help:zoom")}</li>
+          <li>${i18next.t("help:downloadImage")}</li>
+          <li>${i18next.t("help:downloadJson")}</li>
+          <li>${i18next.t("help:upload")}</li>
+        </ul>
+        <button type="button" class="help-close">${i18next.t("help:close")}</button>
+      </dialog>
       <div class="${CuttingTable.rendererElementClass} output-area">
       </div>
     `;
@@ -668,6 +690,24 @@ export class CuttingTable {
       this.square();
     });
     this.squareButton.classList.add("disabled");
+
+    //Help
+    const helpButton = this.container.querySelector<HTMLElement>(".help-button");
+    const helpDialog = this.container.querySelector<HTMLDialogElement>(".help-dialog");
+    if (helpButton !== null && helpDialog !== null) {
+      helpButton.addEventListener("click", () => {
+        helpDialog.showModal();
+      });
+      helpDialog.querySelector<HTMLButtonElement>(".help-close")?.addEventListener("click", () => {
+        helpDialog.close();
+      });
+      // Clicking the backdrop closes the dialog
+      helpDialog.addEventListener("click", (event) => {
+        if (event.target === helpDialog) {
+          helpDialog.close();
+        }
+      });
+    }
 
     //Upload
     this.dropZoneElement = this.container.querySelector<HTMLDivElement>(`.${CuttingTable.dropZoneElementClass}`)!;

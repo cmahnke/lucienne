@@ -36,6 +36,20 @@
     "generic": {
       "columns": "Columns",
       "rows": "Rows"
+    },
+    "help": {
+      "open": "Help",
+      "title": "Controls",
+      "close": "Close",
+      "cuts": "Cut sliders: crop the pattern repeat out of the source image (left/right and top/bottom edges).",
+      "offsets": "Offset sliders: shift alternating rows or columns to align the pattern continuation (offset mode only).",
+      "rotations": "Rotation knobs: rotate alternating tiles in 90 degree steps.",
+      "rulers": "Rulers: show the cut position rulers on the source image.",
+      "zoom": "Zoom in, zoom out and fit the source image view.",
+      "grid": "Grid size: the number of columns and rows of tiles around the pattern repeat.",
+      "downloadImage": "Download: export the rendered pattern as an image.",
+      "downloadJson": "Download as JSON: export the cut definitions; dropping the file back onto the page restores them.",
+      "upload": "Drag & drop a JSON file with cut definitions anywhere onto the page to apply it."
     }
   },
   "de": {
@@ -75,6 +89,20 @@
     "generic": {
       "columns": "Spalten",
       "rows": "Zeilen"
+    },
+    "help": {
+      "open": "Hilfe",
+      "title": "Steuerung",
+      "close": "Schließen",
+      "cuts": "Zuschnitt-Regler: schneidet den Rapport aus dem Quellbild heraus (linke/rechte und obere/untere Kante).",
+      "offsets": "Versatz-Regler: versetzt abwechselnde Reihen oder Spalten, um den Musterübergang auszurichten (nur im Versatz-Modus).",
+      "rotations": "Drehregler: dreht abwechselnde Kacheln in 90-Grad-Schritten.",
+      "rulers": "Lineale: zeigt die Lineale mit den Zuschnitt-Positionen auf dem Quellbild.",
+      "zoom": "Vergrößern, verkleinern und Einpassen der Quellbild-Ansicht.",
+      "grid": "Rastergröße: Anzahl der Spalten und Zeilen der Kacheln um den Rapport.",
+      "downloadImage": "Herunterladen: exportiert das erzeugte Muster als Bild.",
+      "downloadJson": "Als JSON herunterladen: exportiert die Zuschnitt-Definitionen; zieht man die Datei zurück auf die Seite, werden sie wiederhergestellt.",
+      "upload": "Ziehe eine JSON-Datei mit Zuschnitt-Definitionen per Drag & Drop auf die Seite, um sie anzuwenden."
     }
   }
 }
