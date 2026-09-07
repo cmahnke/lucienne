@@ -21,7 +21,6 @@ export class IIIFForm {
   current?: IIIFType;
   entries: { [key in IIIFType]?: IIIFSelect } = {};
   initial: { string: string };
-  _imageAPIUrl: URL;
   _urlInput: boolean;
   _autoLoad: boolean = false;
 
@@ -257,7 +256,6 @@ export class IIIFForm {
       image.entries.push({ id: manifest.uri, label: "" });
       this.current = "Image";
       this.entries["Image"] = image;
-      //this._imageAPIUrl = loadedUrl
       this.loadImageAPI(loadedUrl);
     }
 
@@ -365,12 +363,7 @@ export class IIIFForm {
       return service;
     }
     this.cuttingTable.imageService = service;
-
-    if (this._imageAPIUrl !== undefined && this._imageAPIUrl != imageAPIEndpoint) {
-      this.cuttingTable.imageServiceUrl = this._imageAPIUrl;
-    } else {
-      this.cuttingTable.imageServiceUrl = imageAPIEndpoint;
-    }
+    this.cuttingTable.imageServiceUrl = imageAPIEndpoint;
 
     return service;
   }

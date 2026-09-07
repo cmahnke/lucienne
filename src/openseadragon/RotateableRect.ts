@@ -68,12 +68,12 @@ export class RotateableRect extends OpenSeadragon.Rect {
   }
 
   setHeightNoRotate(height: number) {
-    this._widthNoRotate = height;
+    this._heightNoRotate = height;
     this._updateRotation();
   }
 
-  setDegreesNoRotate(height: number) {
-    this._degreesNoRotate = height;
+  setDegreesNoRotate(degree: number) {
+    this._degreesNoRotate = degree;
     this._updateRotation();
   }
 

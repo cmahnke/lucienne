@@ -219,7 +219,7 @@ export class Renderer {
   }
 
   set offsets(offsets: { [key in CutPosition]?: number }) {
-    if (Renderer.validateSidedVariations(offsets, "rotation")) {
+    if (Renderer.validateSidedVariations(offsets, "offset")) {
       this._offsets = offsets;
     }
   }
@@ -898,7 +898,7 @@ export class Renderer {
               const borderClip = checkModifiedClip(tiledImage);
               borderClip.y = borderClip.height + (marginPos(r, visibleRows) - 1) * borderClip.height - imageCoordShiftY;
               tiledImage.setClip(borderClip);
-            } else if ((c < marginWidth || c >= rows - marginWidth) && offsetRect.height != 0 && offsetRect.width == 0) {
+            } else if ((c < marginWidth || c >= columns - marginWidth) && offsetRect.height != 0 && offsetRect.width == 0) {
               const borderClip = checkModifiedClip(tiledImage);
               borderClip.x = borderClip.width + (marginPos(c, visibleColumns) - 1) * borderClip.width - imageCoordShiftX;
               tiledImage.setClip(borderClip);
@@ -907,7 +907,7 @@ export class Renderer {
             //TODO: Finish this
             if (offsetRect.width != 0 && offsetRect.height != 0) {
               //TODO Fix issues at the edges when using both offset directions
-              if ((c < marginWidth || c >= rows - marginWidth) && (r < marginWidth || r >= rows - marginWidth)) {
+              if ((c < marginWidth || c >= columns - marginWidth) && (r < marginWidth || r >= rows - marginWidth)) {
                 const borderClip = checkModifiedClip(tiledImage);
                 /*
                 borderClip.x = this.clipRect.x
@@ -952,7 +952,7 @@ export class Renderer {
           if (shiftTilesY > marginWidth && (r == rows - shiftTilesY - 1 || r == shiftTilesY)) {
             if (r == shiftTilesY && imageCoordShiftY * -1 > this.clipRect.height) {
               const borderClip = checkModifiedClip(tiledImage);
-              borderClip.height = borderClip.height - (this.clipRect.height + imageCoordShiftX) * -1;
+              borderClip.height = borderClip.height - (this.clipRect.height + imageCoordShiftY) * -1;
               borderClip.y = borderClip.y + (this.clipRect.height + imageCoordShiftY) * -1;
               tiledImage.setClip(borderClip);
             } else if (r == rows - shiftTilesY - 1 && imageCoordShiftY > this.clipRect.height) {

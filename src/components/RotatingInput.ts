@@ -32,7 +32,7 @@ export class RotatingInput extends HTMLElement {
       this.updateRadius();
     } else if (name === "value" && newValue !== null) {
       this.degree = parseInt(newValue, 10) || 0;
-      this.updateHandlePosition();
+      this.updateHandlePosition(false);
     } else if (name === "disabled") {
       const isDisabled = newValue !== null;
       if (this._disabled !== isDisabled) {
@@ -109,7 +109,7 @@ export class RotatingInput extends HTMLElement {
     this.handleElement = this.shadow.querySelector<HTMLDivElement>(".handle");
     this.styleElement = this.shadow.querySelector<HTMLStyleElement>("#dynamic-styles");
     this.updateDisplay();
-    this.updateHandlePosition();
+    this.updateHandlePosition(false);
     this.setupEventListeners();
     this.updateDisabledState();
   }
@@ -122,7 +122,7 @@ export class RotatingInput extends HTMLElement {
       container.style.height = `${2 * this.radius}px`;
       circle.style.width = `${2 * this.radius}px`;
       circle.style.height = `${2 * this.radius}px`;
-      this.updateHandlePosition();
+      this.updateHandlePosition(false);
     }
   }
 
@@ -185,14 +185,19 @@ export class RotatingInput extends HTMLElement {
     }
   };
 
-  updateHandlePosition(): void {
+  updateHandlePosition(dispatch: boolean = true): void {
     if (!this.handleElement) return;
     const x = this.radius * Math.sin(this.degree * (Math.PI / 180));
     const y = -this.radius * Math.cos(this.degree * (Math.PI / 180));
     this.handleElement.style.left = `${this.radius + x}px`;
     this.handleElement.style.top = `${this.radius + y}px`;
     this.updateDisplay();
-    this.dispatchEvent(new CustomEvent("degreeChange", { detail: { degree: this.degree } }));
+    // Programmatic updates skip the event on purpose, otherwise listeners
+    // would be re-fed with the value they just have set (see also
+    // CuttingTable.updateControls)
+    if (dispatch) {
+      this.dispatchEvent(new CustomEvent("degreeChange", { detail: { degree: this.degree } }));
+    }
   }
 
   updateDisplay(): void {
@@ -294,7 +299,7 @@ export class RotatingInput extends HTMLElement {
   }
   set value(val: number) {
     this.degree = val;
-    this.updateHandlePosition();
+    this.updateHandlePosition(false);
   }
 
   get disabled(): boolean {

@@ -74,6 +74,7 @@ export class CuttingTable {
   downloadLink: HTMLAnchorElement;
   dropZoneElement: HTMLDivElement;
   statusContainer: HTMLDivElement | null;
+  addItemHandler: OpenSeadragon.EventHandler<OpenSeadragon.AddItemWorldEvent>;
   //Renderer tiles
   _columns: number = 4;
   _rows: number = 4;
@@ -227,20 +228,24 @@ export class CuttingTable {
     this.downloadLink = document.createElement("a");
     this.downloadLink.innerText = i18next.t("cuttingTable:linksJson");
     this.downloadLink.title = i18next.t("cuttingTable:linksJson");
-    this.downloadLink.setAttribute("href", "javascript:void(0)");
     this.downloadLink.classList.add("link", "json", "disabled");
     this.downloadLink.setAttribute("id", "downloadJSON");
     this.downloadLink.setAttribute("download", "cuttingTable.json");
-    this.downloadLink.addEventListener("click", () => {
-      if (this.cuts !== undefined) {
-        if (this.cuts.url === "" && this.imageServiceUrl === undefined) {
-          throw new Error("Couldn' set target URL!");
-        } else {
-          this.cuts.url = this.imageServiceUrl;
-        }
-        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(this.cuts.toJSONLD(), null, 2));
-        this.downloadLink.setAttribute("href", dataStr);
+    // No placeholder href (like javascript:void(0)): the data URL is only set
+    // once a cut document can actually be generated, the click handler
+    // prevents the default action otherwise
+    this.downloadLink.addEventListener("click", (event) => {
+      if (this.cuts === undefined) {
+        event.preventDefault();
+        return;
       }
+      if (this.cuts.url === "" && this.imageServiceUrl === undefined) {
+        event.preventDefault();
+        throw new Error("Couldn' set target URL!");
+      }
+      this.cuts.url = this.imageServiceUrl;
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(this.cuts.toJSONLD(), null, 2));
+      this.downloadLink.setAttribute("href", dataStr);
     });
     element.appendChild(this.downloadLink);
   }
@@ -277,14 +282,21 @@ export class CuttingTable {
 
   set imageService(endpointService: IIIFImageStub) {
     if (this.viewer !== undefined) {
-      this.viewer.world.addHandler("add-item", () => {
+      // Remove the handler of the previous image first: addHandler accumulates
+      // handlers and updateLines would run once per previously loaded image on
+      // every add-item event
+      if (this.addItemHandler !== undefined) {
+        this.viewer.world.removeHandler("add-item", this.addItemHandler);
+      }
+      this.addItemHandler = () => {
         if (this.cuts !== undefined) {
           this.cuts.lastAxis = undefined;
           this.updateLines(endpointService.width, endpointService.height);
           this.form.clearMessage();
           this.cuts.setVisibility(true);
         }
-      });
+      };
+      this.viewer.world.addHandler("add-item", this.addItemHandler);
       if (this.viewer.world.getItemCount()) {
         this.viewer.close();
         this.viewer.open(IIIFTileSourceSpecifier.wrap(endpointService));
@@ -450,8 +462,8 @@ export class CuttingTable {
         if (position == CutPosition.Right && this.cuts.offsets[CutPosition.Right] !== undefined) {
           this.offsetX.value = String(this.cuts.offsets[CutPosition.Right]);
         }
-        if (position == CutPosition.Top && this.cuts.offsets[CutPosition.Right] !== undefined) {
-          this.offsetY.value = String(this.cuts.offsets[CutPosition.Right] * -1);
+        if (position == CutPosition.Top && this.cuts.offsets[CutPosition.Top] !== undefined) {
+          this.offsetY.value = String(this.cuts.offsets[CutPosition.Top] * -1);
         }
         if (position == CutPosition.Bottom && this.cuts.offsets[CutPosition.Bottom] !== undefined) {
           this.offsetY.value = String(this.cuts.offsets[CutPosition.Bottom]);

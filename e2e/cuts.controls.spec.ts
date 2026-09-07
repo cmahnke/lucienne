@@ -51,11 +51,23 @@ test.describe("cut controls", () => {
   test("rotation control updates the SVG transform", async ({ page }) => {
     await loadTestImage(page);
 
-    // Setting the value property dispatches a "degreeChange" event on the
-    // host element, which the cutting table maps to cuts.rotateY
-    await page.locator("rotating-input.rotation-y").evaluate((el: HTMLElement) => {
-      (el as unknown as { value: number }).value = 90;
-    });
+    // Drag the handle from the top (0 degrees) to the right (90 degrees):
+    // programmatic value writes no longer dispatch "degreeChange" (see N2),
+    // so the component is driven through its real user interaction
+    const circle = page.locator("rotating-input.rotation-y .circle");
+    await circle.scrollIntoViewIfNeeded();
+    const box = await circle.boundingBox();
+    if (box === null) {
+      throw new Error("Rotation circle is not visible");
+    }
+    const centerX = box.x + box.width / 2;
+    const centerY = box.y + box.height / 2;
+    const radius = box.width / 2;
+
+    await page.mouse.move(centerX, centerY - radius);
+    await page.mouse.down();
+    await page.mouse.move(centerX + radius, centerY, { steps: 5 });
+    await page.mouse.up();
 
     const json = (await downloadCutJson(page)) as unknown as CutJSONLD;
     expect(json.body.value).toContain("rotate(90");
