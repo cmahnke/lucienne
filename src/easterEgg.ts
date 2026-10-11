@@ -22,7 +22,7 @@ class EasterEggSVG {
   }
 
   private hex(cx: number, cy: number, r: number): string {
-    const pts = [0, 60, 120, 180, 240, 300, 360].map(a => {
+    const pts = [0, 60, 120, 180, 240, 300, 360].map((a) => {
       const rad = (Math.PI / 180) * a;
       const x = Math.round((cx + r * Math.sin(rad)) * 100) / 100;
       const y = Math.round((cy + r * Math.cos(rad)) * 100) / 100;
