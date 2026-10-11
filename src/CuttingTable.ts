@@ -10,6 +10,7 @@ import { CutPosition } from "./types";
 import type { IIIFImageStub, CutJSON, CutJSONLD } from "./types";
 import { loadInfoJson } from "./util/util";
 import { IIIFTileSourceSpecifier } from "./openseadragon/IIIFTileSourceSpecifier";
+import { installEasterEgg } from "./easterEgg";
 import i18next from "i18next";
 import LanguageDetector from "i18next-browser-languagedetector";
 import translations from "./assets/json/translations.json";
@@ -708,6 +709,8 @@ export class CuttingTable {
         }
       });
     }
+
+    installEasterEgg(this);
 
     //Upload
     this.dropZoneElement = this.container.querySelector<HTMLDivElement>(`.${CuttingTable.dropZoneElementClass}`)!;
