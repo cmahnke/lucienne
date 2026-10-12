@@ -38,6 +38,10 @@ export class Renderer {
   _marginWidth = 1;
   defaultExportDimensions: [number, number] = [1920, 1080];
   _notificationQueue: CutNotification[] = [];
+  // Identifies the current source load: only the newest load may apply its
+  // layout, older ones are superseded (a new source was set or the viewer was
+  // closed underneath them)
+  _loadToken: number = 0;
   _debug: boolean = false;
   fitPreview: boolean = true;
   statusContainer: HTMLDivElement | null;
@@ -86,6 +90,12 @@ export class Renderer {
     this._source = undefined;
     this.clipRect = undefined;
     this._offsets = undefined;
+    // A load that is still in flight belongs to the closed content: invalidate
+    // it so its result is neither applied nor reported as an error
+    this._loadToken++;
+    // The queue holds notifications for the previous source: their pixel
+    // coordinates belong to that source and must not leak into the next one
+    this._notificationQueue.length = 0;
     if (this.viewer !== undefined) {
       this._clearTiles();
       this.viewer.close();
@@ -108,7 +118,6 @@ export class Renderer {
     count: number
   ): Promise<boolean | string> {
     return new Promise((resolve, reject) => {
-      let tilesLoaded = 0;
       const sources: (IIIFImageStub | OpenSeadragon.TiledImage)[] = [];
       if (Array.isArray(source)) {
         throw new Error("Handling of TiledImage array not implemented!");
@@ -118,27 +127,87 @@ export class Renderer {
         }
       }
 
-      //let allTilesLoaded = false;
-      const errorHandler: OpenSeadragon.EventHandler<OpenSeadragon.TileLoadFailedEvent> = (error) => {
-        reject(`Failed to load TiledImage: ${error.message}`);
-      };
-      const tileLoadedHandler: OpenSeadragon.EventHandler<OpenSeadragon.TileLoadedEvent> = () => {
-        tilesLoaded++;
-        checkAllTilesLoaded();
+      // Readiness is tracked per item, not by counting tile-loaded events:
+      // a tile is only requested once it is inside the viewport, so counting
+      // events never reaches the item count while the viewport still shows
+      // the previous content (and single-tile sources like plain images only
+      // ever request one event per item). Every item reports fully loaded as
+      // soon as it has no tiles left to load, which is immediately true for
+      // items outside the viewport.
+      let settled = false;
+      const items: OpenSeadragon.TiledImage[] = [];
+
+      const removeHandlers = () => {
+        viewer.world.removeHandler("add-item", addItemHandler);
+        viewer.removeHandler("tile-loaded", checkAllItemsLoaded);
+        viewer.removeHandler("tile-load-failed", errorHandler);
+        viewer.removeHandler("open-failed", openFailedHandler);
+        viewer.removeHandler("close", supersededHandler);
+        items.forEach((item) => item.removeHandler("fully-loaded-change", fullyLoadedHandler));
       };
 
-      const checkAllTilesLoaded = () => {
-        if (tilesLoaded === sources.length) {
-          viewer.removeHandler("tile-load-failed", errorHandler);
-          viewer.removeHandler("tile-loaded", tileLoadedHandler);
-          //allTilesLoaded = true;
-          resolve(true); // Resolve the Promise when all tiles are loaded
+      const errorHandler: OpenSeadragon.EventHandler<OpenSeadragon.TileLoadFailedEvent> = (error) => {
+        if (settled) return;
+        settled = true;
+        removeHandlers();
+        reject(`Failed to load TiledImage: ${error.message}`);
+      };
+
+      const openFailedHandler: OpenSeadragon.EventHandler<OpenSeadragon.OpenFailedEvent> = (error) => {
+        if (settled) return;
+        settled = true;
+        removeHandlers();
+        reject(`Failed to open TiledImage: ${error.message}`);
+      };
+
+      // A newer load (or clear()) closes the viewer: this load is superseded
+      // then and must not resolve against the new content
+      const supersededHandler = () => {
+        if (settled) return;
+        settled = true;
+        removeHandlers();
+        reject(`Load superseded`);
+      };
+
+      const fullyLoadedHandler = () => {
+        checkAllItemsLoaded();
+      };
+
+      const addItemHandler = (event: OpenSeadragon.AddItemWorldEvent) => {
+        const item = event.item;
+        items.push(item);
+        item.addHandler("fully-loaded-change", fullyLoadedHandler);
+        checkAllItemsLoaded();
+      };
+
+      // An item that has no draw area (it lies completely outside the
+      // viewport) has no tiles to load: its fully-loaded flag stays false
+      // until it scrolls into view, so waiting for it would deadlock while
+      // the viewport still shows the previous content. The remaining items
+      // load their tiles once the layout has pulled them into view.
+      const isItemReady = (item: OpenSeadragon.TiledImage): boolean => {
+        return item.getFullyLoaded() || !item.getDrawArea();
+      };
+
+      const checkAllItemsLoaded = () => {
+        if (settled || items.length < sources.length) {
+          return;
+        }
+        const allLoaded = items.every(isItemReady);
+        if (allLoaded) {
+          settled = true;
+          removeHandlers();
+          resolve(true);
         }
       };
 
-      viewer.addHandler("tile-loaded", tileLoadedHandler);
+      viewer.world.addHandler("add-item", addItemHandler);
+      viewer.addHandler("tile-loaded", checkAllItemsLoaded);
       viewer.addHandler("tile-load-failed", errorHandler);
+      viewer.addHandler("open-failed", openFailedHandler);
       viewer.open(IIIFTileSourceSpecifier.wrap(sources));
+      // Registered after the open call: open() itself closes the viewer first
+      viewer.addHandler("close", supersededHandler);
     });
   }
 
@@ -157,22 +226,39 @@ export class Renderer {
     const rows = this._rows;
 
     this._clearTiles();
+    const loadToken = ++this._loadToken;
     Renderer._loadTiles(this.viewer, this._source, columns * rows)
       .then((result) => {
+        if (loadToken !== this._loadToken) {
+          // Superseded by a newer load: applying the layout now would race
+          // with the newer load's own arrange/preview/layout
+          return;
+        }
         if (typeof result === "boolean" && result) {
           this.viewer?.world.arrange({ rows: this._rows, columns: this._columns, tileMargin: 0, immediately: true });
-          if (!this._notificationQueue.length) {
+          // Take the queued notifications out of the queue first: replaying
+          // them through notify() would re-queue them while the source is
+          // still marked unloaded, so stale entries would survive into the
+          // next load and be replayed with coordinates of this source
+          const queued = this._notificationQueue.splice(0, this._notificationQueue.length);
+          if (!queued.length) {
             // Removing the call to this.preview() breaks the image downloader. Maybe hoth methods can be merged
             this.preview();
             this.layout(true);
           } else {
-            this._notificationQueue.forEach((notification: CutNotification) => {
+            // notify() applies directly once the source is loaded
+            this._loaded = true;
+            queued.forEach((notification: CutNotification) => {
               this.notify(notification);
             });
           }
           this.viewer?.raiseEvent("source-loaded");
           this._loaded = true;
-          this.preview();
+          if (!queued.length) {
+            // A full preview here would reset the clip to the whole image and
+            // drop the cuts that were just replayed from the queue
+            this.preview();
+          }
           this.enableControls();
         } else {
           if (typeof result === "boolean") {
@@ -183,6 +269,10 @@ export class Renderer {
         }
       })
       .catch((error) => {
+        if (loadToken !== this._loadToken) {
+          // The newer load reports its own failures
+          return;
+        }
         console.error("Failed to load tiles:", error);
         if (this.statusContainer !== null) {
           this.statusContainer.innerHTML = i18next.t("renderer:error") + ": " + error.message;

@@ -32,6 +32,16 @@ export async function loadTestImage(page: Page, path = "/") {
   // download link (CuttingTable.ts:308-314), updateLines() enables the controls
   await expect(page.locator("#downloadJSON")).not.toHaveClass(/disabled/);
   await expect(page.locator(".cutting-table-viewer .square")).not.toHaveClass(/disabled/);
+
+  // The signals above come from the source viewer side and can fire before
+  // the output renderer finished its first arrange/preview/layout - tests
+  // that read renderer state must wait for it, otherwise they race a raw
+  // arrange() placement (items at grid origin, no clips)
+  await page.waitForFunction(
+    () => (document.querySelector(".output-viewer") as unknown as { osdRenderer?: { _loaded?: boolean } }).osdRenderer?._loaded === true,
+    undefined,
+    { timeout: 30_000 }
+  );
 }
 
 /**

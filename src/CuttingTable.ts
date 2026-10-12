@@ -318,9 +318,11 @@ export class CuttingTable {
     }
 
     if (this.renderer !== undefined) {
-      if (this.renderer.loaded) {
-        this.renderer.clear();
-      }
+      // Always start from a defined state: the clip rect and the offsets are
+      // image-space state of the previous source. Skipping the clear while a
+      // previous load did not complete left them behind and the next source
+      // was rendered with the previous source's cut region
+      this.renderer.clear();
       this.renderer.source = endpointService;
     }
   }
