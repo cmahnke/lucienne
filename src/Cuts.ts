@@ -359,12 +359,18 @@ export class Cuts {
 
   set offsetX(offset: number) {
     if (offset < 0) {
+      if (this.offsets[CutPosition.Left] === offset) {
+        return;
+      }
       this.offsets[CutPosition.Left] = offset;
       if (CutPosition.Right in this.offsets) {
         delete this.offsets[CutPosition.Right];
       }
       this.lastAxis = CutPosition.Left;
     } else if (offset > 0) {
+      if (this.offsets[CutPosition.Right] === offset) {
+        return;
+      }
       this.offsets[CutPosition.Right] = offset;
       if (CutPosition.Left in this.offsets) {
         delete this.offsets[CutPosition.Left];
@@ -373,6 +379,9 @@ export class Cuts {
     } else {
       // 0 neutralizes the axis: without this the model kept the previous
       // side's value while the slider showed 0
+      if (!(CutPosition.Left in this.offsets) && !(CutPosition.Right in this.offsets)) {
+        return;
+      }
       if (CutPosition.Left in this.offsets) {
         delete this.offsets[CutPosition.Left];
       }
@@ -385,12 +394,18 @@ export class Cuts {
 
   set offsetY(offset: number) {
     if (offset < 0) {
+      if (this.offsets[CutPosition.Top] === offset) {
+        return;
+      }
       this.offsets[CutPosition.Top] = offset;
       if (CutPosition.Bottom in this.offsets) {
         delete this.offsets[CutPosition.Bottom];
       }
       this.lastAxis = CutPosition.Top;
     } else if (offset > 0) {
+      if (this.offsets[CutPosition.Bottom] === offset) {
+        return;
+      }
       this.offsets[CutPosition.Bottom] = offset;
       if (CutPosition.Top in this.offsets) {
         delete this.offsets[CutPosition.Top];
@@ -399,6 +414,9 @@ export class Cuts {
     } else {
       // 0 neutralizes the axis: without this the model kept the previous
       // side's value while the slider showed 0
+      if (!(CutPosition.Top in this.offsets) && !(CutPosition.Bottom in this.offsets)) {
+        return;
+      }
       if (CutPosition.Top in this.offsets) {
         delete this.offsets[CutPosition.Top];
       }

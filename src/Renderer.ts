@@ -42,6 +42,16 @@ export class Renderer {
   // layout, older ones are superseded (a new source was set or the viewer was
   // closed underneath them)
   _loadToken: number = 0;
+  // Configured crop (columns x rows of the cut repeat, in viewport units)
+  // the viewport was last fitted to: the crop only changes with the cut,
+  // the grid or the source scale, so per-tick layouts during slider drags
+  // never move the framing
+  _lastFitCrop: { width: number; height: number } | undefined;
+  // Key of the grid/content the items were last arranged for: world.arrange()
+  // only re-derives item scales from content aspects (layout() positions
+  // every tile itself), so with an unchanged structure it recomputes
+  // identical values while churning springs and bounds-change events
+  _lastArrangeKey: string | undefined;
   _debug: boolean = false;
   fitPreview: boolean = true;
   statusContainer: HTMLDivElement | null;
@@ -90,6 +100,7 @@ export class Renderer {
     this._source = undefined;
     this.clipRect = undefined;
     this._offsets = undefined;
+    this._lastFitCrop = undefined;
     // A load that is still in flight belongs to the closed content: invalidate
     // it so its result is neither applied nor reported as an error
     this._loadToken++;
@@ -104,6 +115,9 @@ export class Renderer {
   }
 
   _clearTiles() {
+    // Fresh items start at default scale: the next layout must arrange, even
+    // if the grid key below would otherwise match
+    this._lastArrangeKey = undefined;
     if (this.viewer !== undefined) {
       this.viewer.world.removeAll();
       for (let i = 0; i < (this.viewer.world.getItemCount() as number); i++) {
@@ -543,9 +557,6 @@ export class Renderer {
     if (this.downloadButton !== undefined && this.downloadButton !== null) {
       this.downloadButton.disabled = false;
     }
-    if (this.fitPreview) {
-      Renderer.fitToWidth(this.viewer, true, undefined, false, true);
-    }
   }
 
   static createOffsetRect(offsets: { [key in CutPosition]?: number }, reference: OpenSeadragon.TiledImage): OffsetRect | undefined {
@@ -605,7 +616,12 @@ export class Renderer {
     if (this.clipRect === undefined || this.viewer === undefined) {
       throw new Error("Clip rect or viewer is not defined");
     }
-    this.viewer.world.arrange({ rows: rows, columns: columns, tileMargin: 0, immediately: true });
+    const firstContent = this.viewer.world.getItemAt(0)?.getContentSize();
+    const arrangeKey = `${rows}x${columns}:${this.viewer.world.getItemCount()}:${firstContent?.x ?? 0}x${firstContent?.y ?? 0}`;
+    if (this._lastArrangeKey !== arrangeKey) {
+      this.viewer.world.arrange({ rows: rows, columns: columns, tileMargin: 0, immediately: true });
+      this._lastArrangeKey = arrangeKey;
+    }
     const referenceImage: OpenSeadragon.TiledImage | undefined = this.viewer.world.getItemAt(0);
     if (referenceImage === undefined) {
       throw new Error("Couldn't get first tiled image!");
@@ -934,18 +950,29 @@ export class Renderer {
       const ratioY = this.clipRect!.height / transformedClipRect.height;
       const cropWidth = visibleColumns * transformedClipRect.width;
       const cropHeight = visibleRows * transformedClipRect.height;
-      const covers = (px: number, py: number, w: number, h: number) => {
+      const subtractPlaced = (px: number, py: number, w: number, h: number) => {
+        // Exact remainder of the query rect after subtracting every placed
+        // rect. Placed rects are expanded by eps: tile edges and scan cell
+        // boundaries come from different floating-point paths, so without a
+        // tolerance ULP-level slivers survive as remainder.
+        // 1e-6 viewport units is far above the noise floor and far below any
+        // visible feature or genuine wedge.
+        const eps = 1e-6;
         let remainder: { x: number; y: number; width: number; height: number }[] = [{ x: px, y: py, width: w, height: h }];
         for (const rect of placedRects) {
           if (remainder.length === 0) {
             break;
           }
+          const ex0 = rect.x - eps;
+          const ey0 = rect.y - eps;
+          const ex1 = rect.x + rect.width + eps;
+          const ey1 = rect.y + rect.height + eps;
           const next: { x: number; y: number; width: number; height: number }[] = [];
           for (const r of remainder) {
-            const ix0 = Math.max(r.x, rect.x);
-            const iy0 = Math.max(r.y, rect.y);
-            const ix1 = Math.min(r.x + r.width, rect.x + rect.width);
-            const iy1 = Math.min(r.y + r.height, rect.y + rect.height);
+            const ix0 = Math.max(r.x, ex0);
+            const iy0 = Math.max(r.y, ey0);
+            const ix1 = Math.min(r.x + r.width, ex1);
+            const iy1 = Math.min(r.y + r.height, ey1);
             if (ix1 <= ix0 || iy1 <= iy0) {
               next.push(r);
               continue;
@@ -965,8 +992,9 @@ export class Renderer {
           }
           remainder = next;
         }
-        return remainder.length === 0;
+        return remainder;
       };
+      const covers = (px: number, py: number, w: number, h: number) => subtractPlaced(px, py, w, h).length === 0;
       const scanColumns = Math.ceil(cropWidth / stepX);
       const scanRows = Math.ceil(cropHeight / stepY);
       const uncovered = new Map<string, { gx: number; gy: number }>();
@@ -1021,23 +1049,88 @@ export class Renderer {
         const py = y0 * stepY;
         const w = Math.min((x1 - x0 + 1) * stepX, cropWidth - px);
         const h = Math.min((y1 - y0 + 1) * stepY, cropHeight - py);
+        // Clip the filler to the exact uncovered remainder inside the blob,
+        // not to the coarse blob itself: the blob is grown on a quarter-cell
+        // grid and can extend over already-covered areas, which would pop an
+        // overlap onto real content (and jerk the viewport fit). A blob whose
+        // remainder is empty was only uncovered by float slivers: deploy
+        // nothing for it instead of wasting a spare on an overlap.
+        const precise = subtractPlaced(px, py, w, h);
+        if (precise.length === 0) {
+          continue;
+        }
+        let bx0 = Infinity;
+        let by0 = Infinity;
+        let bx1 = -Infinity;
+        let by1 = -Infinity;
+        for (const r of precise) {
+          bx0 = Math.min(bx0, r.x);
+          by0 = Math.min(by0, r.y);
+          bx1 = Math.max(bx1, r.x + r.width);
+          by1 = Math.max(by1, r.y + r.height);
+        }
+        const bw = Math.min(bx1 - bx0, cropWidth - bx0);
+        const bh = Math.min(by1 - by0, cropHeight - by0);
+        if (bw <= 0 || bh <= 0) {
+          continue;
+        }
         // A tile draws its clip region offset from its world origin: to land
-        // the drawn region exactly on the blob while showing the source
-        // phase of the blob's position, the origin must sit at the
-        // period-aligned window start and the clip must carry the phase
-        const phaseX = px % transformedClipRect.width;
-        const phaseY = py % transformedClipRect.height;
-        spare.setPosition(new OpenSeadragon.Point(px - phaseX, py - phaseY), immediately);
+        // the drawn region exactly on the uncovered area while showing the
+        // source phase of its position, the origin must sit at the
+        // period-aligned window start minus the cut origin (the clip carries
+        // both), and the clip must carry the phase. Omitting the cut origin
+        // shifts every filler by (clipRect.x, clipRect.y) in scale units, so
+        // it overlaps already-covered tiles while the gap stays empty - only
+        // invisible when the cut starts at (0, 0).
+        const phaseX = bx0 % transformedClipRect.width;
+        const phaseY = by0 % transformedClipRect.height;
+        const scaleX = transformedClipRect.width / this.clipRect!.width;
+        const scaleY = transformedClipRect.height / this.clipRect!.height;
+        spare.setPosition(
+          new OpenSeadragon.Point(bx0 - phaseX - this.clipRect!.x * scaleX, by0 - phaseY - this.clipRect!.y * scaleY),
+          immediately
+        );
         spare.setClip(
-          new OpenSeadragon.Rect(this.clipRect!.x + phaseX * ratioX, this.clipRect!.y + phaseY * ratioY, w * ratioX, h * ratioY)
+          new OpenSeadragon.Rect(this.clipRect!.x + phaseX * ratioX, this.clipRect!.y + phaseY * ratioY, bw * ratioX, bh * ratioY)
         );
       }
     }
 
     this.viewer.world.setAutoRefigureSizes(true);
+    this.fitConfiguredCrop(visibleColumns, visibleRows, transformedClipRect, immediately);
     if (immediately) {
       raiseFinished.bind(this)();
     }
+  }
+
+  fitConfiguredCrop(
+    visibleColumns: number,
+    visibleRows: number,
+    transformedClipRect: OpenSeadragon.Rect,
+    immediately: boolean = true
+  ): void {
+    // Frame exactly the configured columns x rows rectangle instead of the
+    // measured union of drawn tiles: the union jitters whenever boundary
+    // tiles flip hidden/visible/trimmed or fillers deploy, and refitting to
+    // it makes the whole viewport jump on every slider tick. The configured
+    // area only changes when the cut, the grid or the source (scale) change,
+    // so the framing stays put while interacting.
+    if (!this.fitPreview || this.viewer === undefined) {
+      return;
+    }
+    const cropWidth = visibleColumns * transformedClipRect.width;
+    const cropHeight = visibleRows * transformedClipRect.height;
+    if (!(cropWidth > 0) || !(cropHeight > 0)) {
+      return;
+    }
+    const last = this._lastFitCrop;
+    if (last !== undefined && Math.abs(cropWidth - last.width) <= 1e-6 && Math.abs(cropHeight - last.height) <= 1e-6) {
+      return;
+    }
+    const containerSize = this.viewer.viewport.getContainerSize();
+    this.viewer.viewport.zoomTo(containerSize.y / containerSize.x / cropHeight, undefined, immediately);
+    this.viewer.viewport.panTo(new OpenSeadragon.Point(cropWidth / 2, cropHeight / 2), immediately);
+    this._lastFitCrop = { width: cropWidth, height: cropHeight };
   }
 
   private debugOverlay(content: string, image: OpenSeadragon.TiledImage, clip: boolean = false): void {
@@ -1092,6 +1185,50 @@ export class Renderer {
     }
   }
 
+  static compositeBounds(viewer: OpenSeadragon.Viewer): { minX: number; minY: number; maxX: number; maxY: number } | undefined {
+    if (viewer === undefined || viewer.world.getItemCount() === 0) {
+      return undefined;
+    }
+    let minX = Infinity;
+    let maxX = -Infinity;
+    let minY = Infinity;
+    let maxY = -Infinity;
+
+    for (let i = 0; i < viewer.world.getItemCount(); i++) {
+      const tiledImage = viewer.world.getItemAt(i);
+      const bounds = tiledImage.getBounds();
+
+      if (tiledImage.getClip() !== null) {
+        if (tiledImage.getContentSize().x == tiledImage.getClip()!.x && tiledImage.getContentSize().y == tiledImage.getClip()!.y) {
+          continue;
+        }
+
+        minX = Math.min(minX, tiledImage.imageToViewportRectangle(tiledImage.getClip()!).x);
+        maxX = Math.max(
+          maxX,
+          tiledImage.imageToViewportRectangle(tiledImage.getClip()!).x + tiledImage.imageToViewportRectangle(tiledImage.getClip()!).width
+        );
+        maxY = Math.max(
+          maxY,
+          tiledImage.imageToViewportRectangle(tiledImage.getClip()!).y + tiledImage.imageToViewportRectangle(tiledImage.getClip()!).height
+        );
+        //maxX = Math.max(maxX, bounds.x + tiledImage.imageToViewportRectangle(tiledImage.getClip()!).width);
+        //maxY = Math.max(maxY, bounds.y + tiledImage.imageToViewportRectangle(tiledImage.getClip()!).height);
+        minY = Math.min(minY, tiledImage.imageToViewportRectangle(tiledImage.getClip()!).y);
+      } else {
+        minX = Math.min(minX, bounds.x);
+        maxX = Math.max(maxX, bounds.x + bounds.width);
+        maxY = Math.max(maxY, bounds.y + bounds.height);
+        minY = Math.min(minY, bounds.y);
+      }
+    }
+
+    if (minX === Infinity || maxX === -Infinity || minY === Infinity || maxY === -Infinity) {
+      return undefined;
+    }
+    return { minX, minY, maxX, maxY };
+  }
+
   static fitToWidth(
     viewer: OpenSeadragon.Viewer,
     immediately: boolean = true,
@@ -1100,39 +1237,13 @@ export class Renderer {
     fitHeight: boolean = false
   ) {
     if (viewer !== undefined && viewer.world.getItemCount() > 0) {
-      let minX = Infinity;
-      let maxX = -Infinity;
-      let minY = Infinity;
-      let maxY = -Infinity;
-
-      for (let i = 0; i < viewer.world.getItemCount(); i++) {
-        const tiledImage = viewer.world.getItemAt(i);
-        const bounds = tiledImage.getBounds();
-
-        if (tiledImage.getClip() !== null) {
-          if (tiledImage.getContentSize().x == tiledImage.getClip()!.x && tiledImage.getContentSize().y == tiledImage.getClip()!.y) {
-            continue;
-          }
-
-          minX = Math.min(minX, tiledImage.imageToViewportRectangle(tiledImage.getClip()!).x);
-          maxX = Math.max(
-            maxX,
-            tiledImage.imageToViewportRectangle(tiledImage.getClip()!).x + tiledImage.imageToViewportRectangle(tiledImage.getClip()!).width
-          );
-          maxY = Math.max(
-            maxY,
-            tiledImage.imageToViewportRectangle(tiledImage.getClip()!).y + tiledImage.imageToViewportRectangle(tiledImage.getClip()!).height
-          );
-          //maxX = Math.max(maxX, bounds.x + tiledImage.imageToViewportRectangle(tiledImage.getClip()!).width);
-          //maxY = Math.max(maxY, bounds.y + tiledImage.imageToViewportRectangle(tiledImage.getClip()!).height);
-          minY = Math.min(minY, tiledImage.imageToViewportRectangle(tiledImage.getClip()!).y);
-        } else {
-          minX = Math.min(minX, bounds.x);
-          maxX = Math.max(maxX, bounds.x + bounds.width);
-          maxY = Math.max(maxY, bounds.y + bounds.height);
-          minY = Math.min(minY, bounds.y);
-        }
+      const union = Renderer.compositeBounds(viewer);
+      if (union === undefined) {
+        // No measurable content (e.g. every tile hidden): nothing to fit,
+        // same silent no-op as before the union was factored out
+        return;
       }
+      const { minX, minY, maxX, maxY } = union;
 
       const combinedWidth = maxX - minX;
       const combinedHeight = maxY - minY;
