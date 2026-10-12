@@ -15,6 +15,7 @@
     "dist",
     "src",
     "images",
+    "codemeta.json",
     "README.md",
     "LICENSE",
     "CITATION.cff"

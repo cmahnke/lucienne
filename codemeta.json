@@ -1,0 +1,28 @@
+{
+  "@context": "https://doi.org/10.5063/schema/codemeta-2.0",
+  "@type": "SoftwareSourceCode",
+  "name": "Lucienne",
+  "description": "A IIIF pattern generator based on OpenSeadragon",
+  "version": "0.2.1",
+  "author": [
+    {
+      "@type": "Person",
+      "@id": "https://orcid.org/0009-0003-1361-4159",
+      "givenName": "Christian",
+      "familyName": "Mahnke",
+      "email": "mahnke@kustodie.uni-goettingen.de"
+    }
+  ],
+  "license": "BSD-3-Clause-Attribution",
+  "identifier": "https://doi.org/10.5281/zenodo.20082639",
+  "codeRepository": "https://github.com/cmahnke/lucienne",
+  "url": "https://cmahnke.github.io/lucienne/",
+  "readme": "https://github.com/cmahnke/lucienne#readme",
+  "issueTracker": "https://github.com/cmahnke/lucienne/issues",
+  "keywords": ["IIIF", "wallpaper", "pattern", "pattern generator", "OpenSeadragon"],
+  "programmingLanguage": {
+    "@type": "ComputerLanguage",
+    "name": "TypeScript",
+    "url": "https://www.typescriptlang.org/"
+  }
+}
