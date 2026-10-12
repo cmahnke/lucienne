@@ -22,6 +22,7 @@ export default [
     ignores: [
       "dist/",
       "build/",
+      "public/",
       "eslint.config.mjs",
       "rollup.config.mjs",
       "vite.config.js",
