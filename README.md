@@ -1,6 +1,6 @@
 # Lucienne - A IIIF pattern generator
 
-This is a web component to build patterns from IIIF manififests - like from wall papers. It's also possible to pass a collection like [the default one](https://vorsatzpapier.projektemacher.org/collection.json) to load a sample from it. For more background see this [blog article](https://christianmahnke.de/en/post/wallpaper-generator/)-
+This is a web component to build patterns from IIIF manifests - like from wall papers. It's also possible to pass a collection like [the default one](https://vorsatzpapier.projektemacher.org/collection.json) to load a sample from it. For more background see this [blog article](https://christianmahnke.de/en/post/wallpaper-generator/)-
 
 # Demo
 
@@ -64,7 +64,7 @@ npm run dev
 
 ### Test URL
 
-[http://localhost:5173/patterns/?url=https://static.projektemacher.org/vorsatzpapier/post/tapete-47/front](http://localhost:5173/patterns/?url=https://static.projektemacher.org/vorsatzpapier/post/tapete-47/front)
+[http://localhost:5173/?url=https://static.projektemacher.org/vorsatzpapier/post/tapete-47/front](http://localhost:5173/?url=https://static.projektemacher.org/vorsatzpapier/post/tapete-47/front)
 
 ## Generating JSDoc
 
@@ -97,7 +97,7 @@ npm run vite-build
 
 ## Updating OpenSeadragon types
 
-Since version 0.1.1 (and thus OpenSeadragon 6) the types aren't provides by `@tyoes/openseadragon` anymore, they are now provided by `src/@types/openseadragon/index.d.ts` which is used to override the provided types. Those are currently hand crafted.
+Since version 0.1.1 (and thus OpenSeadragon 6) the types aren't provided by `@types/openseadragon` anymore, they are now provided by `src/@types/openseadragon/index.d.ts` which is used to override the provided types. Those are currently hand crafted.
 
 # TODO
 
@@ -114,6 +114,5 @@ Since version 0.1.1 (and thus OpenSeadragon 6) the types aren't provides by `@ty
   - Dynamic margins not clipped correctly at edges
     - insets nor working with clippings
     - check margins wit offsets in two dimensions
-  - Rotation not working with offsets
 - Make sure everything is reset when changing the size - NTH
 - Check how the augmented types could be generated
