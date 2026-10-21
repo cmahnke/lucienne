@@ -53,7 +53,7 @@
     "@allmaps/iiif-parser": "^1.0.0-beta.49",
     "@eslint/js": "^10.0.1",
     "fabric": "^7.4.0",
-    "i18next": "^26.4.7",
+    "i18next": "^26.5.2",
     "i18next-browser-languagedetector": "^8.2.1",
     "openseadragon": "^6.1.1",
     "openseadragon-fabric-overlay": "^2.0.0"
@@ -81,7 +81,7 @@
     "postcss-url": "^10.1.4",
     "prettier": "^3.9.10",
     "rimraf": "^6.1.3",
-    "rollup": "^4.64.7",
+    "rollup": "^4.64.9",
     "rollup-plugin-copy": "^3.5.0",
     "rollup-plugin-dts": "^6.5.1",
     "rollup-plugin-postcss": "^4.0.2",
