@@ -19,6 +19,8 @@ updates:
         versions: [">=7"]
       - dependency-name: "vite-plugin-svgo"
         versions: [">=3"]
+      - dependency-name: "stylelint"
+        versions: [">=18"]
     groups:
       npm:
         patterns:
