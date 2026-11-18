@@ -641,10 +641,7 @@ export class Renderer {
 
         let row = r;
         let column = c;
-        let x = 0,
-          y = 0;
-        let width = 0,
-          height = 0;
+        let x: number, y: number;
         const tiledImage: OpenSeadragon.TiledImage | undefined = this.viewer.world.getItemAt(pos);
 
         let isHidden = false;
@@ -675,8 +672,6 @@ export class Renderer {
         }
 
         //initial position
-        width = transformedClipRect.width;
-        height = transformedClipRect.height;
 
         /*
          * Margins might be more then 1 tile in with or height see `marginWidth`
@@ -697,17 +692,12 @@ export class Renderer {
           throw new Error("TiledImage has no clipings!");
         }
 
-        x = (c - marginWidth) * width;
-        y = (r - marginWidth) * height;
+        x = (c - marginWidth) * transformedClipRect.width;
+        y = (r - marginWidth) * transformedClipRect.height;
         //console.log(`${c},${r}`, tiledImage.getClip());
 
         // Rotations
         if (this._rotations !== undefined && Object.keys(this._rotations).length) {
-          const imageCenter: (image: OpenSeadragon.TiledImage) => OpenSeadragon.Point = (image: OpenSeadragon.TiledImage) => {
-            const dimensions = image.getContentSize();
-            return new OpenSeadragon.Rect(0, 0, dimensions.x, dimensions.y).getCenter();
-          };
-
           //TODO: Rotating back results in wrong width and height
           let rowEven = false,
             columnEven = false;
